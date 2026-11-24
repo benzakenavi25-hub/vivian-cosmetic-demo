@@ -1,5 +1,5 @@
 /* =====================================================================
-   Beauty Clinic Template — rendering + interactions
+   Beauty Clinic Template v2 — rendering + interactions
    Reads window.SITE_CONFIG (js/config.js). No libraries.
    You normally don't need to edit this file for a new client.
    ===================================================================== */
@@ -12,8 +12,9 @@
   var $ = function (sel, ctx) { return (ctx || document).querySelector(sel); };
   var $$ = function (sel, ctx) { return Array.prototype.slice.call((ctx || document).querySelectorAll(sel)); };
   var reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-  var sections = C.sections || {};
-  var isOn = function (key) { return sections[key] !== false; };
+  var isOn = function (key) { return !C.sections || C.sections[key] !== false; };
+  var owner = C.business.ownerFirstName;
+  var telLink = "tel:+" + C.contact.phoneIntl;
 
   /* ---------------------------------------------------------------
      Helpers
@@ -23,12 +24,12 @@
       .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
       .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
   }
-
   function waLink(message) {
     return "https://wa.me/" + C.contact.whatsappIntl + "?text=" + encodeURIComponent(message || C.contact.defaultWhatsappMessage);
   }
-  var telLink = "tel:+" + C.contact.phoneIntl;
-  var owner = C.business.ownerFirstName;
+  function findTreatment(id) {
+    return C.treatments.filter(function (t) { return t.id === id; })[0] || null;
+  }
 
   var ICONS = {
     whatsapp: '<svg viewBox="0 0 24 24" fill="currentColor" focusable="false" aria-hidden="true"><path d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91c0 1.75.46 3.45 1.32 4.95L2.05 22l5.25-1.38c1.45.79 3.08 1.21 4.74 1.21 5.46 0 9.91-4.45 9.91-9.91C21.95 6.45 17.5 2 12.04 2zm0 18.15c-1.48 0-2.93-.4-4.2-1.15l-.3-.18-3.12.82.83-3.04-.2-.31a8.26 8.26 0 0 1-1.26-4.38c0-4.54 3.7-8.24 8.25-8.24 4.54 0 8.24 3.7 8.24 8.24 0 4.55-3.7 8.24-8.24 8.24zm4.52-6.16c-.25-.12-1.47-.72-1.69-.81-.23-.08-.39-.12-.56.12-.17.25-.64.81-.78.97-.14.17-.29.19-.54.06-.25-.12-1.05-.39-1.99-1.23-.74-.66-1.23-1.47-1.38-1.72-.14-.25-.02-.38.11-.51.11-.11.25-.29.37-.43.12-.14.17-.25.25-.41.08-.17.04-.31-.02-.43-.06-.12-.56-1.34-.76-1.84-.2-.48-.41-.42-.56-.43h-.48c-.17 0-.43.06-.66.31-.22.25-.86.85-.86 2.07 0 1.22.89 2.4 1.01 2.56.12.17 1.75 2.67 4.23 3.74.59.26 1.05.41 1.41.52.59.19 1.13.16 1.56.1.48-.07 1.47-.6 1.67-1.18.21-.58.21-1.07.14-1.18-.06-.11-.22-.17-.47-.29z"/></svg>',
@@ -36,82 +37,60 @@
     nav: '<path d="M3 11 22 2l-9 19-2-8-8-2z"/>',
     mail: '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/>',
     pin: '<path d="M12 22s7-6.2 7-12a7 7 0 0 0-14 0c0 5.8 7 12 7 12z"/><circle cx="12" cy="10" r="2.5"/>',
+    clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+    repeat: '<path d="M17 2l4 4-4 4"/><path d="M3 11V9a3 3 0 0 1 3-3h15"/><path d="M7 22l-4-4 4-4"/><path d="M21 13v2a3 3 0 0 1-3 3H3"/>',
     close: '<path d="M6 6l12 12M18 6 6 18"/>',
     chevronLeft: '<path d="m15 18-6-6 6-6"/>',
     chevronRight: '<path d="m9 18 6-6-6-6"/>',
-    chevronDown: '<path d="m6 9 6 6 6-6"/>',
-    drop: '<path d="M12 3s6 6.4 6 11a6 6 0 0 1-12 0c0-4.6 6-11 6-11z"/><path d="M9.5 14.5a2.5 2.5 0 0 0 2.5 2.5"/>',
-    sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',
-    spark: '<path d="M12 3c.9 4.5 3.5 7.1 8 8-4.5.9-7.1 3.5-8 8-.9-4.5-3.5-7.1-8-8 4.5-.9 7.1-3.5 8-8z"/>',
-    leaf: '<path d="M5 19c0-9 6-14 15-14 0 9-5 15-14 15"/><path d="M5 19c3-4 6-6 10-8"/>',
-    eye: '<path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>',
-    feather: '<path d="M20.2 4.8a6 6 0 0 0-8.5 0L5 11.5V19h7.5l6.7-6.7a6 6 0 0 0 1-7.5z"/><path d="M16 8 2 22M17.5 15H9"/>',
+    arrowLeft: '<path d="M19 12H5M11 6l-6 6 6 6"/>',
     search: '<circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/>',
     flask: '<path d="M9 3h6M10 3v6L4.5 18.5A1.7 1.7 0 0 0 6 21h12a1.7 1.7 0 0 0 1.5-2.5L14 9V3"/><path d="M7 15h10"/>',
     heart: '<path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1-1.1a5.5 5.5 0 0 0-7.8 7.8l1 1.1L12 21l7.8-7.5 1-1.1a5.5 5.5 0 0 0 0-7.8z"/>',
-    clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
-    repeat: '<path d="M17 2l4 4-4 4"/><path d="M3 11V9a3 3 0 0 1 3-3h15"/><path d="M7 22l-4-4 4-4"/><path d="M21 13v2a3 3 0 0 1-3 3H3"/>',
     camera: '<path d="M3 8a2 2 0 0 1 2-2h2l2-2h6l2 2h2a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><circle cx="12" cy="13" r="4"/>',
     a11y: '<circle cx="12" cy="4.5" r="1.8"/><path d="M5 8.5l7 1.5 7-1.5M12 10v4.5M12 14.5 9 21M12 14.5l3 6.5"/>',
     arrows: '<path d="m9 7-5 5 5 5M15 7l5 5-5 5"/>',
+    pause: '<path d="M9 5v14M15 5v14"/>',
+    play: '<path d="M8 5v14l11-7z"/>',
     star: '<svg viewBox="0 0 24 24" fill="#E3A008" focusable="false" aria-hidden="true"><path d="m12 2.5 2.9 6 6.6.9-4.8 4.6 1.2 6.5L12 17.4l-5.9 3.1 1.2-6.5L2.5 9.4l6.6-.9z"/></svg>'
   };
-
-  function icon(name) {
+  function svg(name) {
     var p = ICONS[name] || "";
-    var svg = p.indexOf("<svg") === 0 ? p :
+    return p.indexOf("<svg") === 0 ? p :
       '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" focusable="false" aria-hidden="true">' + p + "</svg>";
-    return '<span class="icon" aria-hidden="true">' + svg + "</span>";
   }
+  function icon(name) { return '<span class="icon" aria-hidden="true">' + svg(name) + "</span>"; }
 
-  /* Image slot: real <img> if config has a src, otherwise a styled placeholder */
-  function media(slotId, ratioClass, extraClass) {
-    var slot = (C.images && C.images[slotId]) || { label: slotId };
+  /* Image slot: real image (with optional WebP) or a styled placeholder */
+  function media(slotId, opts) {
+    opts = opts || {};
+    var s = (C.images && C.images[slotId]) || { label: slotId };
     var inner;
-    if (slot.src) {
-      inner = '<img src="' + esc(slot.src) + '" alt="' + esc(slot.alt || "") + '" loading="lazy" decoding="async">';
+    if (s.src) {
+      var attrs = ' alt="' + esc(s.alt || "") + '" decoding="async"' +
+        (opts.eager ? ' fetchpriority="high"' : ' loading="lazy"');
+      var img = '<img src="' + esc(s.src) + '"' + attrs + ">";
+      inner = s.webp ? '<picture><source srcset="' + esc(s.webp) + '" type="image/webp">' + img + "</picture>" : img;
     } else {
-      inner = '<div class="placeholder ' + (extraClass || "") + '" role="img" aria-label="' + esc("מקום לתמונה: " + (slot.label || slotId)) + '">' +
-        icon("camera") + '<span class="placeholder-label">📷 להוסיף תמונה: ' + esc(slot.label || slotId) + "</span></div>";
+      inner = '<div class="placeholder ' + (opts.alt ? "alt" : "") + '" role="img" aria-label="' + esc("מקום לתמונה: " + (s.label || slotId)) + '">' +
+        icon("camera") + "<span>📷 להוסיף תמונה: " + esc(s.label || slotId) + "</span></div>";
     }
-    return '<div class="media ' + (ratioClass || "") + '" data-slot="' + esc(slotId) + '">' + inner + "</div>";
+    return '<div class="media ' + (opts.cls || "") + '">' + inner + "</div>";
   }
 
-  function findTreatment(id) {
-    for (var i = 0; i < C.treatments.length; i++) if (C.treatments[i].id === id) return C.treatments[i];
-    return null;
-  }
-  function categoryLabel(id) {
-    for (var i = 0; i < C.categories.length; i++) if (C.categories[i].id === id) return C.categories[i].label;
-    return "";
-  }
-  function priceHtml(t) {
-    return '<span class="price"><small>החל מ-</small>₪' + esc(t.price) + "</span>";
-  }
-  function sectionHead(kicker, title, titleId, lead, center) {
-    return '<div class="section-head reveal' + (center ? " center" : "") + '">' +
-      (kicker ? '<span class="kicker">' + esc(kicker) + "</span>" : "") +
-      '<h2 class="section-title" id="' + titleId + '">' + esc(title) + "</h2>" +
+  function head(kicker, title, id, lead, center) {
+    return '<div class="section-head' + (center ? " center" : "") + '">' +
+      (kicker ? '<p class="kicker">' + esc(kicker) + "</p>" : "") +
+      '<h2 class="section-title" id="' + id + '">' + esc(title) + "</h2>" +
       (lead ? '<p class="section-lead">' + esc(lead) + "</p>" : "") + "</div>";
   }
   function waBtn(text, message, cls) {
-    return '<a class="btn ' + (cls || "btn-primary") + '" href="' + waLink(message) + '" target="_blank" rel="noopener">' + icon("whatsapp") + "<span>" + esc(text) + "</span></a>";
+    return '<a class="btn ' + (cls || "btn-accent") + '" href="' + waLink(message) + '" target="_blank" rel="noopener">' + icon("whatsapp") + "<span>" + esc(text) + "</span></a>";
   }
-
-  /* Israel time: weekday (0=Sun) + minutes since midnight */
-  function israelNow() {
-    var d = new Date();
-    try {
-      var parts = new Intl.DateTimeFormat("en-US", { timeZone: "Asia/Jerusalem", weekday: "short", hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).formatToParts(d);
-      var o = {};
-      parts.forEach(function (p) { o[p.type] = p.value; });
-      var days = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 };
-      return { day: days[o.weekday], minutes: (parseInt(o.hour, 10) % 24) * 60 + parseInt(o.minute, 10) };
-    } catch (e) {
-      return { day: d.getDay(), minutes: d.getHours() * 60 + d.getMinutes() };
-    }
+  function arrows(label) {
+    return '<div class="c-arrows" role="group" aria-label="' + esc(label) + '">' +
+      '<button type="button" class="round-btn" data-dir="prev" aria-label="הקודם">' + icon("chevronRight") + "</button>" +
+      '<button type="button" class="round-btn" data-dir="next" aria-label="הבא">' + icon("chevronLeft") + "</button></div>";
   }
-  function toMinutes(hhmm) { var p = hhmm.split(":"); return parseInt(p[0], 10) * 60 + parseInt(p[1], 10); }
 
   /* ---------------------------------------------------------------
      SEO: title, meta, Open Graph, robots, JSON-LD
@@ -124,19 +103,20 @@
   }
   function renderSeo() {
     var s = C.seo || {};
+    var abs = function (p) { try { return new URL(p, s.siteUrl || location.href).href; } catch (e) { return p; } };
     document.title = s.title || C.business.name;
     setMeta("name", "description", s.description);
     setMeta("property", "og:title", s.title);
     setMeta("property", "og:description", s.description);
     setMeta("property", "og:site_name", C.business.name);
     if (s.siteUrl) setMeta("property", "og:url", s.siteUrl);
-    if (s.ogImage) setMeta("property", "og:image", s.ogImage);
-
+    if (s.ogImage) setMeta("property", "og:image", abs(s.ogImage));
     var robots = document.head.querySelector('meta[name="robots"]');
     if (C.demoMode) setMeta("name", "robots", "noindex, nofollow");
     else if (robots) robots.parentNode.removeChild(robots);
+    if (C.palette && C.palette.bg) setMeta("name", "theme-color", C.palette.bg);
 
-    var dayNames = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+    var days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
     var schema = {
       "@context": "https://schema.org",
       "@type": "BeautySalon",
@@ -145,21 +125,14 @@
       description: s.description,
       telephone: "+" + C.contact.phoneIntl,
       email: C.contact.email,
-      address: {
-        "@type": "PostalAddress",
-        streetAddress: C.contact.street,
-        addressLocality: C.contact.city,
-        addressCountry: C.contact.country
-      },
-      openingHoursSpecification: C.hours.filter(function (h) { return !h.closed; }).map(function (h) {
-        return { "@type": "OpeningHoursSpecification", dayOfWeek: "https://schema.org/" + dayNames[h.day], opens: h.open, closes: h.close };
-      })
+      address: { "@type": "PostalAddress", streetAddress: C.contact.street, addressLocality: C.contact.city, addressCountry: C.contact.country },
+      openingHoursSpecification: C.hours.map(function (h) {
+        return { "@type": "OpeningHoursSpecification", dayOfWeek: "https://schema.org/" + days[h.day], opens: h.open, closes: h.close };
+      }),
+      aggregateRating: { "@type": "AggregateRating", ratingValue: C.rating.value, reviewCount: C.rating.count, bestRating: 5 }
     };
     if (s.siteUrl) schema.url = s.siteUrl;
-    if (s.ogImage) schema.image = s.ogImage;
-    if (C.rating && C.rating.enabled) {
-      schema.aggregateRating = { "@type": "AggregateRating", ratingValue: C.rating.value, reviewCount: C.rating.count, bestRating: 5 };
-    }
+    if (s.ogImage) schema.image = abs(s.ogImage);
     var ld = document.createElement("script");
     ld.type = "application/ld+json";
     ld.textContent = JSON.stringify(schema);
@@ -167,414 +140,496 @@
   }
 
   /* ---------------------------------------------------------------
-     Navigation: only links to sections that are actually shown
+     Header + navigation
      --------------------------------------------------------------- */
-  var sectionKeyById = { "promo": "promo", "before-after": "beforeAfter", "quiz": "quiz", "testimonials": "testimonials", "brands": "brands", "faq": "faq" };
+  var sectionKeyById = { results: "beforeAfter", testimonials: "testimonials", faq: "faq" };
   function navItems() {
-    return C.nav.filter(function (n) {
-      var key = sectionKeyById[n.target];
-      return !key || isOn(key);
-    });
+    return C.nav.filter(function (n) { var k = sectionKeyById[n.target]; return !k || isOn(k); });
+  }
+  function wordmark() {
+    return "<b>" + esc(C.business.name) + '</b><span class="en">' + esc(C.business.nameEn) + "</span>";
   }
 
   function renderHeader() {
-    var ribbon = $("#demo-ribbon");
-    if (C.demoBanner) { ribbon.textContent = C.demoBannerText; ribbon.hidden = false; }
-
-    $("#header-logo").innerHTML = esc(C.business.name) + "<small>" + esc(C.business.nameEn) + "</small>";
-    var links = navItems().map(function (n) { return '<li><a href="#' + esc(n.target) + '">' + esc(n.label) + "</a></li>"; }).join("");
-    $("#nav-list").innerHTML = links;
+    $("#header-logo").innerHTML = wordmark();
+    $("#header-logo").setAttribute("aria-label", C.business.name + ", לראש העמוד");
+    $("#nav-list").innerHTML = navItems().map(function (n) {
+      return '<li><a href="#' + esc(n.target) + '">' + esc(n.label) + "</a></li>";
+    }).join("");
     $("#mobile-nav-list").innerHTML = navItems().map(function (n, i) {
-      return '<li><a href="#' + esc(n.target) + '" style="transition-delay:' + (0.05 + i * 0.05) + 's">' + esc(n.label) + "</a></li>";
+      return '<li><a href="#' + esc(n.target) + '" style="transition-delay:' + (0.04 + i * 0.05) + 's">' + esc(n.label) + "</a></li>";
     }).join("");
     $("#mobile-menu-foot").innerHTML =
-      waBtn(C.hero.primaryCta, C.contact.defaultWhatsappMessage, "btn-primary btn-block") +
-      '<a class="btn btn-ghost btn-block" href="' + telLink + '">' + icon("phone") + "<span>" + esc(C.contact.phoneDisplay) + "</span></a>" +
+      waBtn(C.hero.primaryCta, null) +
+      '<a class="btn btn-outline" href="' + telLink + '">' + icon("phone") + "<span>" + esc(C.contact.phoneDisplay) + "</span></a>" +
       "<p>" + esc(C.contact.street + ", " + C.contact.city) + "</p>";
+    $("#header-cta").href = waLink();
+  }
 
-    var hw = $("#header-wa");
-    hw.href = waLink();
-    $("#wa-float").href = waLink();
-
-    // sticky header border on scroll
+  /* "Headroom": hide on scroll down, show on scroll up, solid after 80px */
+  function initSmartHeader() {
     var header = $("#site-header");
-    var onScroll = function () { header.classList.toggle("is-scrolled", window.scrollY > 8); };
-    window.addEventListener("scroll", onScroll, { passive: true });
-    onScroll();
+    var lastY = window.scrollY, ticking = false;
+    function update() {
+      var y = window.scrollY;
+      header.classList.toggle("is-solid", y > 80);
+      if (Math.abs(y - lastY) > 6) {
+        var menuOpen = document.body.classList.contains("menu-open");
+        if (y > lastY && y > 160 && !menuOpen && !header.contains(document.activeElement)) header.classList.add("is-hidden");
+        else if (y < lastY) header.classList.remove("is-hidden");
+        lastY = y;
+      }
+      ticking = false;
+    }
+    window.addEventListener("scroll", function () {
+      if (!ticking) { ticking = true; requestAnimationFrame(update); }
+    }, { passive: true });
+    header.addEventListener("focusin", function () { header.classList.remove("is-hidden"); });
+    update();
   }
 
-  /* Mobile full-screen menu */
-  function initMobileMenu() {
-    var btn = $("#menu-toggle"), menu = $("#mobile-menu");
-    var lastFocus = null;
-
-    function open() {
-      lastFocus = document.activeElement;
-      menu.hidden = false;
-      void menu.offsetWidth; // reflow so the transition runs
-      menu.classList.add("is-open");
-      btn.setAttribute("aria-expanded", "true");
-      btn.setAttribute("aria-label", "סגירת תפריט");
-      document.body.classList.add("menu-open");
-      var first = $("a", menu); if (first) first.focus({ preventScroll: true });
-    }
-    function close(restoreFocus) {
-      menu.classList.remove("is-open");
-      btn.setAttribute("aria-expanded", "false");
-      btn.setAttribute("aria-label", "פתיחת תפריט");
-      document.body.classList.remove("menu-open");
-      setTimeout(function () { if (!menu.classList.contains("is-open")) menu.hidden = true; }, reduceMotion ? 0 : 350);
-      if (restoreFocus && lastFocus) lastFocus.focus();
-    }
-    btn.addEventListener("click", function () { btn.getAttribute("aria-expanded") === "true" ? close(true) : open(); });
-    menu.addEventListener("click", function (e) { if (e.target.closest("a")) close(false); });
-    document.addEventListener("keydown", function (e) {
-      if (e.key === "Escape" && menu.classList.contains("is-open")) close(true);
-      if (e.key === "Tab" && menu.classList.contains("is-open")) trapFocus(e, [btn].concat($$("a, button", menu)));
-    });
-    window.matchMedia("(min-width: 1024px)").addEventListener("change", function (m) { if (m.matches && menu.classList.contains("is-open")) close(false); });
-  }
-
-  function trapFocus(e, items) {
-    items = items.filter(function (el) { return el.offsetParent !== null; });
+  function trapFocus(e, container) {
+    var items = $$("a[href], button:not([disabled]), [tabindex]:not([tabindex='-1'])", container)
+      .filter(function (el) { return el.offsetParent !== null; });
     if (!items.length) return;
     var first = items[0], last = items[items.length - 1];
     if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
     else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
   }
 
-  /* ---------------------------------------------------------------
-     Hero
-     --------------------------------------------------------------- */
-  function renderHero() {
-    var h = C.hero, r = C.rating;
-    var rating = "";
-    if (r && r.enabled) {
-      rating = '<a class="rating-badge" href="' + esc(r.reviewsUrl || "#") + '"' + (r.reviewsUrl && r.reviewsUrl !== "#" ? ' target="_blank" rel="noopener"' : "") + ">" +
-        icon("star") + "<span><strong>" + esc(r.value) + "</strong> בגוגל · " + esc(r.count) + " ביקורות</span></a>";
+  function initMobileMenu() {
+    var btn = $("#menu-toggle"), menu = $("#mobile-menu"), header = $("#site-header");
+    function open() {
+      menu.hidden = false;
+      void menu.offsetWidth; // reflow so the transition runs
+      menu.classList.add("is-open");
+      btn.setAttribute("aria-expanded", "true");
+      btn.setAttribute("aria-label", "סגירת תפריט");
+      document.body.classList.add("menu-open");
+      header.classList.remove("is-hidden");
+      var first = $("a", menu); if (first) first.focus({ preventScroll: true });
     }
-    var experience = (C.stats[0] && C.stats[0].value) ? C.stats[0].value + (C.stats[0].suffix || "") : "";
-    $("#hero").innerHTML =
-      '<div class="container hero-grid">' +
-        '<div class="hero-text-col">' +
-          '<span class="kicker reveal">' + esc(h.kicker) + "</span>" +
-          '<h1 class="hero-title reveal" id="hero-title" style="--d:.05s">' + esc(h.title) + "</h1>" +
-          '<p class="hero-subtitle reveal" style="--d:.12s">' + esc(h.subtitle) + "</p>" +
-          '<p class="hero-text reveal" style="--d:.18s">' + esc(h.text) + "</p>" +
-          '<div class="hero-actions reveal" style="--d:.24s">' +
-            waBtn(h.primaryCta, C.contact.defaultWhatsappMessage) +
-            (isOn("quiz") ? '<a class="btn btn-outline" href="#quiz">' + esc(h.secondaryCta) + "</a>" : "") +
-          "</div>" +
-          '<div class="reveal" style="--d:.3s">' + rating + "</div>" +
-        "</div>" +
-        '<div class="hero-media reveal" style="--d:.15s">' +
-          media(h.imageSlot, "ratio-hero") +
-          (experience ? '<div class="hero-seal" aria-hidden="true"><b>' + esc(experience) + "</b>שנות ניסיון</div>" : "") +
-        "</div>" +
-      "</div>";
-  }
-
-  /* ---------------------------------------------------------------
-     Stats — final numbers are written into the HTML first,
-     the count-up animation is only a visual extra.
-     --------------------------------------------------------------- */
-  function renderStats() {
-    $("#stats").innerHTML = '<div class="container"><ul class="stats-grid">' + C.stats.map(function (s, i) {
-      var isNum = typeof s.value === "number";
-      var finalText = isNum ? s.value + (s.suffix || "") : s.text;
-      return '<li class="stat reveal" style="--d:' + (i * 0.08) + 's">' +
-        '<span class="stat-value' + (isNum ? "" : " is-text") + '"' + (isNum ? ' data-count="' + s.value + '" data-suffix="' + esc(s.suffix || "") + '"' : "") + ">" + esc(finalText) + "</span>" +
-        '<span class="stat-label">' + esc(s.label) + "</span></li>";
-    }).join("") + "</ul></div>";
-
-    if (reduceMotion || !("IntersectionObserver" in window)) return;
-    var io = new IntersectionObserver(function (entries) {
-      entries.forEach(function (en) {
-        if (!en.isIntersecting) return;
-        io.unobserve(en.target);
-        countUp(en.target);
-      });
-    }, { threshold: 0.6 });
-    $$("[data-count]").forEach(function (el) { io.observe(el); });
-  }
-  function countUp(el) {
-    var end = parseFloat(el.getAttribute("data-count"));
-    var suffix = el.getAttribute("data-suffix") || "";
-    var finalText = end + suffix;
-    var dur = 1600, start = null;
-    function step(ts) {
-      if (start === null) start = ts;
-      var p = Math.min((ts - start) / dur, 1);
-      var eased = 1 - Math.pow(1 - p, 3);
-      el.textContent = (p < 1 ? Math.round(end * eased) : end) + suffix;
-      if (p < 1) requestAnimationFrame(step); else el.textContent = finalText;
+    function close(restore) {
+      menu.classList.remove("is-open");
+      btn.setAttribute("aria-expanded", "false");
+      btn.setAttribute("aria-label", "פתיחת תפריט");
+      document.body.classList.remove("menu-open");
+      setTimeout(function () { if (!menu.classList.contains("is-open")) menu.hidden = true; }, reduceMotion ? 0 : 300);
+      if (restore) btn.focus();
     }
-    requestAnimationFrame(step);
-    // Safety net: whatever happens, show the real number
-    setTimeout(function () { el.textContent = finalText; }, dur + 400);
-  }
-
-  /* ---------------------------------------------------------------
-     Concerns ("מה מציק לך?")
-     --------------------------------------------------------------- */
-  var mobileQuery = window.matchMedia("(max-width: 759px)");
-
-  function concernDetailHtml(c, headingId) {
-    var recs = c.treatments.map(findTreatment).filter(Boolean);
-    return '<div class="concern-detail">' +
-      '<span class="kicker">ההמלצה שלי</span>' +
-      '<h3 id="' + headingId + '">' + esc(c.title) + "</h3>" +
-      "<p>" + esc(c.short) + " אלה הטיפולים שאני ממליצה לבדוק. את ההתאמה הסופית נעשה יחד באבחון אישי.</p>" +
-      '<ul class="rec-list">' + recs.map(function (t, i) {
-        return '<li class="rec-item"><span class="rec-tag">' + (i === 0 ? "מומלץ ביותר" : "אפשרות נוספת") + "</span>" +
-          "<h4>" + esc(t.name) + "</h4><p>" + esc(t.description) + "</p></li>";
-      }).join("") + "</ul>" +
-      waBtn("לשאלה ותיאום בוואטסאפ", "היי " + owner + ", אני מתעניינת בטיפול ב" + c.title) +
-    "</div>";
-  }
-
-  function renderConcerns() {
-    $("#concerns").innerHTML = '<div class="container">' +
-      sectionHead("מה מציק לך?", "נתחיל ממה שמפריע לך", "concerns-title", "בחרי את מה שהכי מעסיק אותך, ותראי אילו טיפולים מתאימים.") +
-      '<div class="concern-grid">' + C.concerns.map(function (c, i) {
-        return '<button type="button" class="concern-card reveal" style="--d:' + (i % 3) * 0.07 + 's" data-concern="' + esc(c.id) + '" aria-expanded="false" aria-controls="concern-panel">' +
-          icon(c.icon) + "<h3>" + esc(c.title) + "</h3><p>" + esc(c.short) + "</p>" +
-          '<span class="concern-more">לטיפולים המומלצים ' + icon("chevronDown") + "</span></button>";
-      }).join("") + "</div>" +
-      '<div class="concern-panel" id="concern-panel" role="region" aria-live="polite"><div></div></div>' +
-      '<div class="section-cta">' + waBtn("לא בטוחה? שאלי אותי בוואטסאפ", C.contact.defaultWhatsappMessage, "btn-outline") + "</div>" +
-    "</div>";
-
-    var panel = $("#concern-panel"), panelInner = panel.firstElementChild;
-    var current = null;
-
-    $$(".concern-card").forEach(function (card) {
-      card.addEventListener("click", function () {
-        var id = card.getAttribute("data-concern");
-        var c = C.concerns.filter(function (x) { return x.id === id; })[0];
-        if (mobileQuery.matches) { openSheet(concernDetailHtml(c, "sheet-title"), card); return; }
-
-        if (current === id) { // toggle closed
-          current = null;
-          panel.classList.remove("is-open");
-          card.setAttribute("aria-expanded", "false");
-          return;
-        }
-        current = id;
-        $$(".concern-card").forEach(function (b) { b.setAttribute("aria-expanded", String(b === card)); });
-        panelInner.innerHTML = concernDetailHtml(c, "concern-detail-title");
-        panel.setAttribute("aria-labelledby", "concern-detail-title");
-        panel.classList.add("is-open");
-        setTimeout(function () {
-          var r = panel.getBoundingClientRect();
-          if (r.bottom > window.innerHeight) panel.scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth", block: "nearest" });
-        }, reduceMotion ? 0 : 350);
-      });
-    });
-  }
-
-  /* Bottom sheet (mobile) */
-  var sheetLastFocus = null;
-  function openSheet(html, opener) {
-    var sheet = $("#sheet"), panel = $(".sheet-panel", sheet);
-    $("#sheet-body").innerHTML = html;
-    sheetLastFocus = opener || document.activeElement;
-    sheet.hidden = false;
-    void sheet.offsetWidth;
-    sheet.classList.add("is-open");
-    document.body.classList.add("sheet-open");
-    panel.scrollTop = 0;
-    panel.focus({ preventScroll: true });
-  }
-  function closeSheet() {
-    var sheet = $("#sheet");
-    if (sheet.hidden) return;
-    sheet.classList.remove("is-open");
-    document.body.classList.remove("sheet-open");
-    setTimeout(function () { sheet.hidden = true; }, reduceMotion ? 0 : 450);
-    if (sheetLastFocus) sheetLastFocus.focus({ preventScroll: true });
-  }
-  function initSheet() {
-    var sheet = $("#sheet");
-    sheet.addEventListener("click", function (e) { if (e.target.closest("[data-close-sheet]")) closeSheet(); });
+    btn.addEventListener("click", function () { menu.classList.contains("is-open") ? close(true) : open(); });
+    menu.addEventListener("click", function (e) { if (e.target.closest("a")) close(false); });
     document.addEventListener("keydown", function (e) {
-      if (sheet.hidden) return;
-      if (e.key === "Escape") closeSheet();
-      if (e.key === "Tab") trapFocus(e, $$("button, a", sheet));
+      if (!menu.classList.contains("is-open")) return;
+      if (e.key === "Escape") close(true);
+      if (e.key === "Tab") {
+        // cycle between the toggle button and the menu links
+        var items = [btn].concat($$("a", menu));
+        var first = items[0], last = items[items.length - 1];
+        if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+        else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+      }
+    });
+    window.matchMedia("(min-width: 1024px)").addEventListener("change", function (m) {
+      if (m.matches && menu.classList.contains("is-open")) close(false);
     });
   }
 
   /* ---------------------------------------------------------------
-     Treatments + price list
-     --------------------------------------------------------------- */
-  function renderTreatments() {
-    var usedCats = C.treatments.map(function (t) { return t.category; });
-    var cats = C.categories.filter(function (c) { return c.id === "all" || usedCats.indexOf(c.id) > -1; });
-
-    $("#treatments").innerHTML = '<div class="container">' +
-      sectionHead("טיפולים ומחירים", "הטיפולים בקליניקה", "treatments-title", "כל טיפול מותאם אישית לעור שלך. המחירים הם נקודת פתיחה, ואת התוכנית המדויקת נבנה יחד.") +
-      '<div class="chips reveal" role="group" aria-label="סינון לפי קטגוריה">' + cats.map(function (c, i) {
-        return '<button type="button" class="chip" data-filter="' + esc(c.id) + '" aria-pressed="' + (i === 0) + '">' + esc(c.label) + "</button>";
-      }).join("") + "</div>" +
-      '<ul class="treat-grid" id="treat-grid">' + C.treatments.map(function (t, i) {
-        return '<li class="treat-card reveal" style="--d:' + (i % 3) * 0.07 + 's" data-category="' + esc(t.category) + '">' +
-          media(t.imageSlot, "ratio-card") +
-          '<div class="treat-body">' +
-            '<div class="treat-top"><h3>' + esc(t.name) + '</h3><span class="treat-cat">' + esc(categoryLabel(t.category)) + "</span></div>" +
-            "<p>" + esc(t.description) + "</p>" +
-            '<div class="treat-meta"><span>' + icon("clock") + '<span class="visually-hidden">משך: </span>' + esc(t.duration) + "</span>" +
-              "<span>" + icon("repeat") + '<span class="visually-hidden">מספר טיפולים: </span>' + esc(t.sessions) + "</span></div>" +
-            '<div class="treat-foot">' + priceHtml(t) +
-              '<a class="btn btn-outline btn-sm" href="' + waLink("היי " + owner + ", אשמח לפרטים ולתיאום " + t.name + " 🙂") + '" target="_blank" rel="noopener" aria-label="' + esc("לפרטים ותיאום: " + t.name + " (וואטסאפ)") + '">לפרטים ותיאום</a>' +
-            "</div>" +
-          "</div></li>";
-      }).join("") + "</ul>" +
-      '<p class="price-note">* המחירים הם החל מ-, והמחיר הסופי נקבע לפי האבחון והתוכנית האישית.</p>' +
-    "</div>";
-
-    var chips = $$("#treatments .chip");
-    var cards = $$("#treat-grid .treat-card");
-    chips.forEach(function (chip) {
-      chip.addEventListener("click", function () {
-        var f = chip.getAttribute("data-filter");
-        chips.forEach(function (c) { c.setAttribute("aria-pressed", String(c === chip)); });
-        cards.forEach(function (card) {
-          var show = f === "all" || card.getAttribute("data-category") === f;
-          card.hidden = !show;
-          if (show && !reduceMotion) { card.classList.remove("quiz-anim"); void card.offsetWidth; card.classList.add("quiz-anim"); }
-        });
-      });
-    });
-  }
-
-  /* ---------------------------------------------------------------
-     Promo with live countdown (auto-hides after end date)
+     Promo timing (shared by hero pill + promo card)
      --------------------------------------------------------------- */
   function israelOffset(date) {
     try {
       var tz = new Intl.DateTimeFormat("en-US", { timeZone: "Asia/Jerusalem", timeZoneName: "shortOffset" })
         .formatToParts(date).filter(function (p) { return p.type === "timeZoneName"; })[0].value; // "GMT+2"
-      var m = tz.match(/GMT([+-]\d+)/);
-      var h = m ? parseInt(m[1], 10) : 2;
+      var m = tz.match(/GMT([+-]\d+)/), h = m ? parseInt(m[1], 10) : 2;
       return (h >= 0 ? "+" : "-") + ("0" + Math.abs(h)).slice(-2) + ":00";
     } catch (e) { return "+02:00"; }
   }
-  function promoEnd() {
+  var promoEnd = (function () {
     var p = C.promo;
+    if (!p) return null;
     if (p.endDate && /^\d{4}-\d{2}-\d{2}$/.test(p.endDate)) {
       return new Date(p.endDate + "T23:59:59" + israelOffset(new Date(p.endDate + "T12:00:00Z")));
     }
     var d = new Date(); // demo default: 14 days from today, end of day
     d.setDate(d.getDate() + 14); d.setHours(23, 59, 59, 0);
     return d;
+  })();
+  var promoActive = isOn("promo") && !!promoEnd && promoEnd.getTime() > Date.now();
+
+  /* ---------------------------------------------------------------
+     Hero
+     --------------------------------------------------------------- */
+  function renderHero() {
+    var h = C.hero;
+    $("#hero").innerHTML = '<div class="container hero-grid">' +
+      '<div class="hero-text">' +
+        '<span class="en">' + esc(h.kicker) + "</span>" +
+        '<h1 class="hero-title" id="hero-title">' + h.titleLines.map(function (l) { return "<span>" + esc(l) + "</span>"; }).join("") + "</h1>" +
+        '<p class="hero-lead">' + esc(h.text) + "</p>" +
+        '<div class="hero-actions">' +
+          waBtn(h.primaryCta, null) +
+          '<a class="btn btn-outline" href="#treatments">' + esc(h.secondaryCta) + "</a>" +
+        "</div>" +
+        (promoActive ? '<button type="button" class="promo-pill" id="promo-pill">' + esc(h.promoPill) + icon("arrowLeft") + "</button>" : "") +
+      "</div>" +
+      '<div class="hero-visual">' +
+        '<span class="arch-outline" aria-hidden="true"></span>' +
+        '<div class="arch">' + media(h.imageSlot, { eager: true }) + "</div>" +
+        '<ul class="glass-chips" aria-label="במספרים">' + h.chips.map(function (c) {
+          // keep "35+" / "90%+" in LTR order inside the Hebrew line
+          return '<li class="glass">' + esc(c.text).replace(/(\d[\d.]*[%+]+)/g, '<bdi dir="ltr">$1</bdi>') + "</li>";
+        }).join("") + "</ul>" +
+      "</div>" +
+    "</div>";
   }
 
-  function renderPromo() {
-    var sec = $("#promo");
-    if (!isOn("promo") || !C.promo) return;
-    var end = promoEnd();
-    if (end.getTime() <= Date.now()) return; // expired: stays hidden
+  /* ---------------------------------------------------------------
+     Marquee (two identical groups = seamless loop)
+     --------------------------------------------------------------- */
+  function renderMarquee() {
+    var group = C.marquee.map(function (t) { return "<span>" + esc(t) + "</span>"; }).join("");
+    // repeat the list so one group is always wider than the screen
+    var wide = group + group;
+    $("#marquee").innerHTML = '<div class="marquee-track"><div class="marquee-group">' + wide + '</div><div class="marquee-group">' + wide + "</div></div>";
+  }
 
+  /* ---------------------------------------------------------------
+     Generic horizontal carousel: scroll-snap + drag + arrows + swipe
+     --------------------------------------------------------------- */
+  function initCarousel(wrap) {
+    var track = $(".c-track", wrap);
+    var prev = $('[data-dir="prev"]', wrap), next = $('[data-dir="next"]', wrap);
+    var rtl = getComputedStyle(track).direction === "rtl";
+
+    function stepSize() {
+      var item = $$(".c-track > *", wrap).filter(function (el) { return !el.hidden; })[0];
+      var gap = parseFloat(getComputedStyle(track).columnGap) || 18;
+      return item ? item.getBoundingClientRect().width + gap : track.clientWidth * 0.8;
+    }
+    function go(dir) { // dir: 1 = next, -1 = prev
+      track.scrollBy({ left: dir * stepSize() * (rtl ? -1 : 1), behavior: reduceMotion ? "auto" : "smooth" });
+    }
+    function updateButtons() {
+      if (!prev) return;
+      var max = track.scrollWidth - track.clientWidth, pos = Math.abs(track.scrollLeft);
+      prev.disabled = pos < 4;
+      next.disabled = pos > max - 4;
+    }
+    if (prev) {
+      prev.addEventListener("click", function () { go(-1); });
+      next.addEventListener("click", function () { go(1); });
+    }
+    track.addEventListener("scroll", function () { requestAnimationFrame(updateButtons); }, { passive: true });
+    window.addEventListener("resize", updateButtons);
+
+    // Mouse drag-to-scroll (touch already swipes natively)
+    var down = false, moved = false, startX = 0, startScroll = 0;
+    track.addEventListener("pointerdown", function (e) {
+      if (e.pointerType !== "mouse" || e.button !== 0 || e.target.closest(".ba")) return;
+      down = true; moved = false; startX = e.clientX; startScroll = track.scrollLeft;
+    });
+    track.addEventListener("pointermove", function (e) {
+      if (!down) return;
+      var dx = e.clientX - startX;
+      if (!moved && Math.abs(dx) > 5) {
+        moved = true; track.classList.add("is-dragging");
+        try { track.setPointerCapture(e.pointerId); } catch (err) {}
+      }
+      if (moved) track.scrollLeft = startScroll - dx;
+    });
+    function end() {
+      if (!down) return;
+      down = false;
+      if (moved) {
+        // re-enable snapping, then let it settle on the nearest card
+        var left = track.scrollLeft;
+        track.classList.remove("is-dragging");
+        track.scrollLeft = left;
+      }
+    }
+    track.addEventListener("pointerup", end);
+    track.addEventListener("pointercancel", end);
+    track.addEventListener("lostpointercapture", end);
+    // A drag must not trigger a click on links/buttons inside the cards
+    track.addEventListener("click", function (e) {
+      if (moved) { e.preventDefault(); e.stopPropagation(); moved = false; }
+    }, true);
+
+    updateButtons();
+    return { track: track, update: updateButtons, reset: function () { track.scrollTo({ left: 0, behavior: "auto" }); updateButtons(); } };
+  }
+
+  /* ---------------------------------------------------------------
+     "מצאי את הטיפול שלך": filters + treatments carousel + quiz entry
+     --------------------------------------------------------------- */
+  var finderCarousel = null;
+
+  function promoCardHtml() {
     var p = C.promo;
-    var endText = end.toLocaleDateString("he-IL", { day: "numeric", month: "long", timeZone: "Asia/Jerusalem" });
-    sec.innerHTML = '<div class="container promo-inner">' +
-      '<div class="reveal"><span class="kicker">' + esc(p.kicker) + '</span><h2 id="promo-title">' + esc(p.title) + "</h2><p>" + esc(p.text) + "</p></div>" +
-      '<div class="reveal" style="--d:.1s">' +
-        '<p class="visually-hidden">המבצע בתוקף עד ' + esc(endText) + "</p>" +
+    return '<article class="card card-promo" id="promo-card" tabindex="-1" data-concerns="' + esc((p.concerns || []).join(" ")) + '" aria-labelledby="promo-card-title">' +
+      '<span class="badge">' + esc(p.badge) + "</span>" +
+      '<div><h3 id="promo-card-title">' + esc(p.title) + "</h3></div>" +
+      "<p>" + esc(p.text) + "</p>" +
+      '<div><p class="visually-hidden" id="promo-end-text"></p>' +
         '<div class="countdown" aria-hidden="true">' +
-          '<div class="cd-unit"><b data-cd="d">00</b><span>ימים</span></div>' +
-          '<div class="cd-unit"><b data-cd="h">00</b><span>שעות</span></div>' +
-          '<div class="cd-unit"><b data-cd="m">00</b><span>דקות</span></div>' +
-          '<div class="cd-unit"><b data-cd="s">00</b><span>שניות</span></div>' +
-        "</div>" +
-        waBtn(p.ctaText, p.whatsappMessage, "btn-block") +
-        '<p class="promo-fine">בתוקף עד ' + esc(endText) + " או עד גמר המקומות.</p>" +
-      "</div></div>";
-    sec.hidden = false;
+          '<div><b data-cd="d">00</b><span>ימים</span></div>' +
+          '<div><b data-cd="h">00</b><span>שעות</span></div>' +
+          '<div><b data-cd="m">00</b><span>דקות</span></div>' +
+          '<div><b data-cd="s">00</b><span>שניות</span></div>' +
+        "</div></div>" +
+      '<a class="btn btn-light" href="' + waLink(p.whatsappMessage) + '" target="_blank" rel="noopener">' + esc(p.ctaText) + "</a>" +
+    "</article>";
+  }
+  function giftCardHtml() {
+    var g = C.giftCard;
+    return '<article class="card card-gift" data-concerns="" aria-labelledby="gift-title">' +
+      '<h3 id="gift-title">' + esc(g.title) + "</h3>" +
+      '<div class="gift-art" aria-hidden="true">' + esc(C.business.name) + "</div>" +
+      "<p>" + esc(g.text) + "</p>" +
+      waBtn(g.ctaText, g.whatsappMessage, "btn-outline") +
+    "</article>";
+  }
+  function treatmentCardHtml(t) {
+    return '<article class="card" data-concerns="' + esc((t.concerns || []).join(" ")) + '" aria-labelledby="t-' + esc(t.id) + '">' +
+      media(t.imageSlot) +
+      '<div class="card-body">' +
+        '<h3 id="t-' + esc(t.id) + '">' + esc(t.name) + "</h3>" +
+        '<p class="card-desc">' + esc(t.description) + "</p>" +
+        '<div class="card-meta"><span>' + icon("clock") + '<span class="visually-hidden">משך: </span>' + esc(t.duration) + "</span>" +
+          "<span>" + icon("repeat") + '<span class="visually-hidden">מספר טיפולים: </span>' + esc(t.sessions) + "</span></div>" +
+        '<div class="card-foot"><span class="price"><small>החל מ-</small>₪' + esc(t.price) + "</span>" +
+          '<a class="text-link" href="' + waLink("היי " + owner + ", אשמח לפרטים ולתיאום " + t.name + " 🙂") + '" target="_blank" rel="noopener" aria-label="' + esc("לתיאום " + t.name + " בוואטסאפ") + '">לתיאום ' + icon("arrowLeft") + "</a></div>" +
+      "</div></article>";
+  }
 
-    var els = { d: $('[data-cd="d"]', sec), h: $('[data-cd="h"]', sec), m: $('[data-cd="m"]', sec), s: $('[data-cd="s"]', sec) };
+  function renderFinder() {
+    var f = C.finder;
+    var cards = (promoActive ? promoCardHtml() : "") +
+      C.treatments.map(treatmentCardHtml).join("") +
+      (isOn("giftCard") && C.giftCard ? giftCardHtml() : "");
+
+    $("#treatments").innerHTML = '<div class="container">' +
+      '<div class="head-row">' + head(f.kicker, f.title, "treatments-title", f.text) + arrows("ניווט בין הטיפולים") + "</div>" +
+      '<div class="filters" role="group" aria-label="סינון לפי מה שמציק לך">' + f.filters.map(function (x, i) {
+        return '<button type="button" class="pill" data-filter="' + esc(x.id) + '" aria-pressed="' + (i === 0) + '">' + esc(x.label) + "</button>";
+      }).join("") + "</div>" +
+      '<div class="carousel" id="finder-carousel" role="region" aria-roledescription="קרוסלה" aria-label="טיפולים ומחירים">' +
+        '<div class="c-track reveal" tabindex="0" aria-label="רשימת טיפולים, גללי לצדדים">' + cards + "</div>" +
+      "</div>" +
+      '<div class="finder-foot">' +
+        (isOn("quiz") && C.quiz ? '<button type="button" class="btn btn-outline" id="open-quiz">' + esc(f.quizCta) + icon("arrowLeft") + "</button>" : "") +
+        '<p class="note">* המחירים הם "החל מ-", והמחיר הסופי נקבע באבחון האישי.</p>' +
+      "</div>" +
+    "</div>";
+
+    // the arrows live in the header row, so the carousel wrapper is the whole section container
+    finderCarousel = initCarousel($("#treatments .container"));
+    initFilters();
+    if (promoActive) startCountdown();
+
+    var pill = $("#promo-pill");
+    if (pill) pill.addEventListener("click", function () {
+      setFilter("all");
+      $("#treatments").scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth", block: "start" });
+      var card = $("#promo-card");
+      if (!card) return;
+      card.classList.remove("is-highlight"); void card.offsetWidth; card.classList.add("is-highlight");
+      setTimeout(function () { card.focus({ preventScroll: true }); }, reduceMotion ? 0 : 600);
+    });
+    var quizBtn = $("#open-quiz");
+    if (quizBtn) quizBtn.addEventListener("click", function () { openQuiz(quizBtn); });
+  }
+
+  var setFilter = function () {};
+  function initFilters() {
+    var pills = $$("#treatments .pill");
+    var cards = $$("#treatments .card");
+    var timer = null;
+    setFilter = function (f) {
+      pills.forEach(function (p) { p.setAttribute("aria-pressed", String(p.getAttribute("data-filter") === f)); });
+      clearTimeout(timer);
+      var toHide = [], toShow = [];
+      cards.forEach(function (card) {
+        var match = f === "all" || (" " + card.getAttribute("data-concerns") + " ").indexOf(" " + f + " ") > -1;
+        if (match && card.hidden) toShow.push(card);
+        if (!match && !card.hidden) toHide.push(card);
+      });
+      var swap = function () {
+        toHide.forEach(function (c) { c.hidden = true; c.classList.remove("is-out"); });
+        toShow.forEach(function (c) {
+          c.hidden = false;
+          if (!reduceMotion) { c.classList.remove("is-in"); void c.offsetWidth; c.classList.add("is-in"); }
+        });
+        finderCarousel.reset();
+      };
+      if (reduceMotion || !toHide.length) { swap(); return; }
+      toHide.forEach(function (c) { c.classList.add("is-out"); });
+      timer = setTimeout(swap, 220);
+    };
+    pills.forEach(function (p) {
+      p.addEventListener("click", function () { setFilter(p.getAttribute("data-filter")); });
+    });
+  }
+
+  function startCountdown() {
+    var card = $("#promo-card");
+    var els = {};
+    ["d", "h", "m", "s"].forEach(function (k) { els[k] = $('[data-cd="' + k + '"]', card); });
+    $("#promo-end-text").textContent = "המבצע בתוקף עד " + promoEnd.toLocaleDateString("he-IL", { day: "numeric", month: "long", timeZone: "Asia/Jerusalem" });
     var pad = function (n) { return (n < 10 ? "0" : "") + n; };
     function tick() {
-      var diff = end.getTime() - Date.now();
-      if (diff <= 0) { sec.hidden = true; clearInterval(timer); return; }
+      var diff = promoEnd.getTime() - Date.now();
+      if (diff <= 0) { // expired: remove the card and the hero pill
+        clearInterval(t);
+        card.parentNode.removeChild(card);
+        var pill = $("#promo-pill"); if (pill) pill.parentNode.removeChild(pill);
+        return;
+      }
       var s = Math.floor(diff / 1000);
       els.d.textContent = pad(Math.floor(s / 86400));
       els.h.textContent = pad(Math.floor((s % 86400) / 3600));
       els.m.textContent = pad(Math.floor((s % 3600) / 60));
       els.s.textContent = pad(s % 60);
     }
-    var timer = setInterval(tick, 1000);
+    var t = setInterval(tick, 1000);
     tick();
   }
 
   /* ---------------------------------------------------------------
-     Before / After slider (pointer + touch + keyboard)
+     Quiz modal (bottom sheet on mobile)
+     --------------------------------------------------------------- */
+  var modal, modalOpener = null;
+  function openQuiz(opener) {
+    modal = $("#quiz-modal");
+    modalOpener = opener || document.activeElement;
+    renderQuizStart();
+    modal.hidden = false;
+    void modal.offsetWidth;
+    modal.classList.add("is-open");
+    document.body.classList.add("modal-open");
+    $(".modal-panel", modal).focus({ preventScroll: true });
+  }
+  function closeQuiz() {
+    if (!modal || modal.hidden) return;
+    modal.classList.remove("is-open");
+    document.body.classList.remove("modal-open");
+    setTimeout(function () { modal.hidden = true; }, reduceMotion ? 0 : 320);
+    if (modalOpener) modalOpener.focus({ preventScroll: true });
+  }
+
+  var quizState = { step: 0, answers: {} };
+  function renderQuizStart() { quizState = { step: 0, answers: {} }; renderQuizStep(false); }
+
+  function quizProgress(pct, label) {
+    return '<div class="quiz-progress" role="progressbar" aria-label="התקדמות בשאלון" aria-valuemin="0" aria-valuemax="100" aria-valuenow="' + Math.round(pct) + '"><span style="width:' + pct + '%"></span></div>' +
+      '<p class="quiz-step">' + esc(label) + "</p>";
+  }
+  function renderQuizStep(focus) {
+    var Q = C.quiz, step = quizState.step, total = Q.questions.length, q = Q.questions[step];
+    $("#quiz-body").innerHTML = '<div class="fade-in">' +
+      quizProgress((step / total) * 100, "שאלה " + (step + 1) + " מתוך " + total) +
+      '<h3 class="quiz-q" id="quiz-q" tabindex="-1">' + esc(q.text) + "</h3>" +
+      '<div class="quiz-options" role="group" aria-labelledby="quiz-q">' + q.options.map(function (o) {
+        return '<button type="button" class="quiz-option" data-value="' + esc(o.value) + '" aria-pressed="' + (quizState.answers[q.id] === o.value) + '">' + esc(o.label) + "</button>";
+      }).join("") + "</div>" +
+      '<div class="quiz-nav">' +
+        (step > 0 ? '<button type="button" class="link-btn" data-quiz="back">חזרה</button><button type="button" class="link-btn" data-quiz="restart">התחילי מחדש</button>' : "") +
+      "</div></div>";
+    if (focus) $("#quiz-q").focus({ preventScroll: true });
+  }
+  function quizResult() {
+    var Q = C.quiz, a = quizState.answers, rule = null;
+    for (var i = 0; i < Q.rules.length && !rule; i++) {
+      var w = Q.rules[i].when, ok = true;
+      for (var k in w) if (Object.prototype.hasOwnProperty.call(w, k) && a[k] !== w[k]) ok = false;
+      if (ok) rule = Q.rules[i];
+    }
+    var t = findTreatment(rule ? rule.treatment : Q.fallbackTreatment) || C.treatments[0];
+    var note = (Q.skinNotes && Q.skinNotes[a.skin]) || "";
+    $("#quiz-body").innerHTML = '<div class="fade-in quiz-result">' +
+      quizProgress(100, "סיימת! זו ההמלצה שלך") +
+      '<p class="kicker">ההמלצה בשבילך</p>' +
+      '<h3 id="quiz-result-title" tabindex="-1">' + esc(t.name) + "</h3>" +
+      "<p>" + esc(rule && rule.why ? rule.why : t.description) + (note ? " " + esc(note) : "") + "</p>" +
+      waBtn("שלחי לי את ההמלצה בוואטסאפ", Q.whatsappMessage.replace("{treatment}", t.name)) +
+      '<p class="small">ההמלצה ראשונית בלבד. ההתאמה הסופית נעשית באבחון אישי.</p>' +
+      '<button type="button" class="link-btn" data-quiz="restart">התחילי מחדש</button>' +
+    "</div>";
+    $("#quiz-result-title").focus({ preventScroll: true });
+  }
+  function initQuizModal() {
+    if (!isOn("quiz") || !C.quiz) return;
+    var m = $("#quiz-modal");
+    $("#quiz-modal-title").textContent = C.quiz.title;
+    m.addEventListener("click", function (e) {
+      if (e.target.closest("[data-close-modal]")) { closeQuiz(); return; }
+      var opt = e.target.closest(".quiz-option"), act = e.target.closest("[data-quiz]");
+      if (opt) {
+        var q = C.quiz.questions[quizState.step];
+        quizState.answers[q.id] = opt.getAttribute("data-value");
+        $$(".quiz-option", m).forEach(function (b) { b.setAttribute("aria-pressed", String(b === opt)); });
+        setTimeout(function () {
+          quizState.step++;
+          if (quizState.step < C.quiz.questions.length) renderQuizStep(true); else quizResult();
+        }, reduceMotion ? 0 : 240);
+      } else if (act) {
+        var a = act.getAttribute("data-quiz");
+        if (a === "back" && quizState.step > 0) { quizState.step--; renderQuizStep(true); }
+        if (a === "restart") { quizState = { step: 0, answers: {} }; renderQuizStep(true); }
+      }
+    });
+    document.addEventListener("keydown", function (e) {
+      if (m.hidden) return;
+      if (e.key === "Escape") closeQuiz();
+      if (e.key === "Tab") trapFocus(e, $(".modal-panel", m));
+    });
+  }
+
+  /* ---------------------------------------------------------------
+     Before / After carousel with per-card comparison sliders
      --------------------------------------------------------------- */
   function renderBeforeAfter() {
-    var sec = $("#before-after"), ba = C.beforeAfter;
+    var sec = $("#results"), ba = C.beforeAfter;
     if (!isOn("beforeAfter") || !ba || !ba.items.length) return;
-
     sec.innerHTML = '<div class="container">' +
-      sectionHead(ba.kicker, ba.title, "ba-title", "גררי את הידית כדי לראות את השינוי.", true) +
-      '<div class="ba-wrap reveal">' +
-        '<div class="tabs" role="tablist" aria-label="בחירת טיפול">' + ba.items.map(function (it, i) {
-          return '<button type="button" class="chip" role="tab" id="ba-tab-' + i + '" aria-controls="ba-panel" aria-selected="' + (i === 0) + '" aria-pressed="' + (i === 0) + '" tabindex="' + (i === 0 ? 0 : -1) + '" data-index="' + i + '">' + esc(it.tab) + "</button>";
+      '<div class="head-row">' + head(ba.kicker, ba.title, "results-title", ba.note) + arrows("ניווט בין התוצאות") + "</div>" +
+      '<div role="region" aria-roledescription="קרוסלה" aria-label="תוצאות לפני ואחרי">' +
+        '<div class="c-track reveal">' + ba.items.map(function (it, i) {
+          return '<figure class="ba-card" role="group" aria-roledescription="שקופית" aria-label="' + esc(it.label) + '">' +
+            '<div class="ba">' +
+              '<div class="ba-layer">' + media(it.after, { alt: true }) + "</div>" +
+              '<div class="ba-layer ba-before">' + media(it.before) + "</div>" +
+              '<span class="ba-tag before" aria-hidden="true">לפני</span><span class="ba-tag after" aria-hidden="true">אחרי</span>' +
+              '<div class="ba-handle"><div class="ba-knob" role="slider" tabindex="0" aria-label="' + esc("השוואת לפני ואחרי: " + it.label) + '" aria-valuemin="0" aria-valuemax="100" aria-valuenow="50" aria-valuetext="50% לפני">' + icon("arrows") + "</div></div>" +
+            "</div>" +
+            '<figcaption class="ba-label"><b>' + esc(it.label) + "</b></figcaption>" +
+          "</figure>";
         }).join("") + "</div>" +
-        '<div id="ba-panel" role="tabpanel" aria-labelledby="ba-tab-0">' +
-          '<div class="ba" id="ba">' +
-            '<div class="ba-layer ba-after" id="ba-after"></div>' +
-            '<div class="ba-layer ba-before" id="ba-before"></div>' +
-            '<span class="ba-label before">לפני</span><span class="ba-label after">אחרי</span>' +
-            '<div class="ba-handle"><div class="ba-knob" role="slider" tabindex="0" aria-label="השוואת לפני ואחרי" aria-valuemin="0" aria-valuemax="100" aria-valuenow="50" aria-valuetext="50% לפני">' + icon("arrows") + "</div></div>" +
-          "</div>" +
-          '<p class="ba-caption" id="ba-caption"></p>' +
-        "</div>" +
       "</div>" +
-      '<div class="section-cta center">' + waBtn("רוצה תוצאה כזו? בואי נדבר", C.contact.defaultWhatsappMessage) + "</div>" +
+      '<div class="finder-foot">' + waBtn(ba.ctaText, "היי " + owner + ", ראיתי באתר תוצאות לפני ואחרי ואשמח לשמוע פרטים 🙂", "btn-outline") + "</div>" +
     "</div>";
     sec.hidden = false;
+    initCarousel($("#results .container"));
+    $$(".ba", sec).forEach(initCompare);
+  }
 
-    var box = $("#ba"), knob = $(".ba-knob", box), tabs = $$('[role="tab"]', sec);
-    var pos = 50;
-    function setPos(v) {
+  function initCompare(box) {
+    var knob = $(".ba-knob", box), pos = 50, dragging = false;
+    function set(v) {
       pos = Math.max(0, Math.min(100, v));
       box.style.setProperty("--pos", pos);
       knob.setAttribute("aria-valuenow", Math.round(pos));
       knob.setAttribute("aria-valuetext", Math.round(pos) + "% לפני");
     }
-    function show(i) {
-      var it = ba.items[i];
-      $("#ba-before").innerHTML = media(it.before, "", "");
-      $("#ba-after").innerHTML = media(it.after, "", "tint-b");
-      $("#ba-caption").textContent = it.caption + " · " + ba.note;
-      $("#ba-panel").setAttribute("aria-labelledby", "ba-tab-" + i);
-      tabs.forEach(function (t, j) {
-        t.setAttribute("aria-selected", String(j === i));
-        t.setAttribute("aria-pressed", String(j === i));
-        t.tabIndex = j === i ? 0 : -1;
-      });
-      setPos(50);
-    }
-    tabs.forEach(function (t, i) {
-      t.addEventListener("click", function () { show(i); });
-      t.addEventListener("keydown", function (e) {
-        var dir = e.key === "ArrowLeft" ? 1 : e.key === "ArrowRight" ? -1 : 0; // RTL: left = next
-        if (!dir) return;
-        e.preventDefault();
-        var n = (i + dir + tabs.length) % tabs.length;
-        tabs[n].focus(); show(n);
-      });
-    });
-
-    // Pointer drag (mouse + touch). "Before" is on the right, so measure from the right edge.
-    var dragging = false;
-    function fromEvent(e) {
-      var r = box.getBoundingClientRect();
-      setPos(((r.right - e.clientX) / r.width) * 100);
-    }
+    // "before" is on the right, so measure from the right edge
+    function fromEvent(e) { var r = box.getBoundingClientRect(); set(((r.right - e.clientX) / r.width) * 100); }
     box.addEventListener("pointerdown", function (e) {
-      if (e.pointerType === "mouse" && e.button !== 0) return;
+      // mouse: drag anywhere; touch: only from the knob, so swiping the card still scrolls the carousel
+      if (e.pointerType === "mouse" ? e.button !== 0 : !e.target.closest(".ba-knob")) return;
       dragging = true;
+      e.preventDefault();
       try { box.setPointerCapture(e.pointerId); } catch (err) {}
       fromEvent(e);
     });
@@ -582,102 +637,14 @@
     ["pointerup", "pointercancel", "lostpointercapture"].forEach(function (ev) {
       box.addEventListener(ev, function () { dragging = false; });
     });
-
     knob.addEventListener("keydown", function (e) {
       var step = e.shiftKey ? 10 : 5, v = null;
       if (e.key === "ArrowLeft" || e.key === "ArrowUp") v = pos + step;   // handle moves left = more "before"
       if (e.key === "ArrowRight" || e.key === "ArrowDown") v = pos - step;
       if (e.key === "Home") v = 0;
       if (e.key === "End") v = 100;
-      if (v !== null) { e.preventDefault(); setPos(v); }
+      if (v !== null) { e.preventDefault(); set(v); }
     });
-
-    show(0);
-  }
-
-  /* ---------------------------------------------------------------
-     Skin quiz
-     --------------------------------------------------------------- */
-  function renderQuiz() {
-    var sec = $("#quiz"), Q = C.quiz;
-    if (!isOn("quiz") || !Q) return;
-
-    sec.innerHTML = '<div class="container">' +
-      sectionHead(Q.kicker, Q.title, "quiz-title", Q.intro, true) +
-      '<div class="quiz-card reveal" id="quiz-card" aria-live="polite"></div>' +
-    "</div>";
-    sec.hidden = false;
-    sec.classList.add("alt-bg");
-
-    var card = $("#quiz-card");
-    var answers = {}, step = 0, total = Q.questions.length;
-
-    function progress(pct, label) {
-      return '<div class="quiz-progress" role="progressbar" aria-label="התקדמות בשאלון" aria-valuemin="0" aria-valuemax="100" aria-valuenow="' + Math.round(pct) + '"><span style="width:' + pct + '%"></span></div>' +
-        '<p class="quiz-step-label">' + esc(label) + "</p>";
-    }
-
-    function renderStep(focus) {
-      var q = Q.questions[step];
-      card.innerHTML = '<div class="quiz-anim">' +
-        progress((step / total) * 100, "שאלה " + (step + 1) + " מתוך " + total) +
-        '<h3 class="quiz-q" tabindex="-1" id="quiz-q">' + esc(q.text) + "</h3>" +
-        '<div class="quiz-options" role="group" aria-labelledby="quiz-q">' + q.options.map(function (o) {
-          return '<button type="button" class="quiz-option" data-value="' + esc(o.value) + '" aria-pressed="' + (answers[q.id] === o.value) + '">' + esc(o.label) + "</button>";
-        }).join("") + "</div>" +
-        '<div class="quiz-nav">' +
-          (step > 0 ? '<button type="button" class="link-btn" data-quiz="back">חזרה לשאלה הקודמת</button>' : "<span></span>") +
-          (step > 0 ? '<button type="button" class="link-btn" data-quiz="restart">התחילי מחדש</button>' : "") +
-        "</div></div>";
-      if (focus) $("#quiz-q").focus({ preventScroll: true });
-    }
-
-    function computeResult() {
-      var rule = null;
-      for (var i = 0; i < Q.rules.length && !rule; i++) {
-        var w = Q.rules[i].when, ok = true;
-        for (var k in w) if (Object.prototype.hasOwnProperty.call(w, k) && answers[k] !== w[k]) ok = false;
-        if (ok) rule = Q.rules[i];
-      }
-      var t = findTreatment(rule ? rule.treatment : Q.fallbackTreatment) || C.treatments[0];
-      return { treatment: t, why: rule && rule.why ? rule.why : t.description };
-    }
-
-    function renderResult() {
-      var r = computeResult(), t = r.treatment;
-      var note = (Q.skinNotes && Q.skinNotes[answers.skin]) || "";
-      var msg = Q.whatsappMessage.replace("{treatment}", t.name);
-      card.innerHTML = '<div class="quiz-anim quiz-result">' +
-        progress(100, "סיימת! זו ההמלצה שלך") +
-        '<span class="kicker">ההמלצה בשבילך</span>' +
-        '<h3 tabindex="-1" id="quiz-result-title">' + esc(t.name) + "</h3>" +
-        "<p>" + esc(r.why) + (note ? " " + esc(note) : "") + "</p>" +
-        waBtn("שלחי לי את ההמלצה בוואטסאפ", msg) +
-        '<p class="small">ההמלצה ראשונית בלבד. ההתאמה הסופית נעשית באבחון אישי.</p>' +
-        '<button type="button" class="link-btn" data-quiz="restart">התחילי מחדש</button>' +
-      "</div>";
-      $("#quiz-result-title").focus({ preventScroll: true });
-    }
-
-    card.addEventListener("click", function (e) {
-      var opt = e.target.closest(".quiz-option");
-      var act = e.target.closest("[data-quiz]");
-      if (opt) {
-        var q = Q.questions[step];
-        answers[q.id] = opt.getAttribute("data-value");
-        $$(".quiz-option", card).forEach(function (b) { b.setAttribute("aria-pressed", String(b === opt)); });
-        setTimeout(function () {
-          step++;
-          if (step < total) renderStep(true); else renderResult();
-        }, reduceMotion ? 0 : 260);
-      } else if (act) {
-        var a = act.getAttribute("data-quiz");
-        if (a === "back" && step > 0) { step--; renderStep(true); }
-        if (a === "restart") { answers = {}; step = 0; renderStep(true); }
-      }
-    });
-
-    renderStep(false);
   }
 
   /* ---------------------------------------------------------------
@@ -686,248 +653,261 @@
   function renderAbout() {
     var a = C.about;
     $("#about").innerHTML = '<div class="container about-grid">' +
-      '<div class="about-media reveal">' + media(a.imageSlot, "ratio-about") + "</div>" +
+      '<div class="about-media reveal">' + media(a.imageSlot) + "</div>" +
       '<div class="about-text">' +
-        sectionHead(a.kicker, a.title, "about-title") +
-        a.paragraphs.map(function (p, i) { return '<p class="reveal" style="--d:' + i * 0.08 + 's">' + esc(p) + "</p>"; }).join("") +
-        '<p class="signature reveal">' + esc(a.signature) + "</p>" +
+        head(a.kicker, a.title, "about-title") +
+        a.paragraphs.map(function (p) { return "<p>" + esc(p) + "</p>"; }).join("") +
+        '<p class="signature">' + esc(a.signature) + "</p>" +
         '<ul class="values">' + a.values.map(function (v, i) {
-          return '<li class="value reveal" style="--d:' + i * 0.08 + 's">' + icon(v.icon) + "<h3>" + esc(v.title) + "</h3><p>" + esc(v.text) + "</p></li>";
+          return '<li class="reveal" style="--d:' + i * 0.06 + 's">' + icon(v.icon) + esc(v.title) + "</li>";
         }).join("") + "</ul>" +
-        '<div class="section-cta reveal">' + waBtn("לקביעת אבחון אישי", "היי " + owner + ", אשמח לקבוע אבחון אישי 🙂") + "</div>" +
       "</div>" +
     "</div>";
   }
 
   /* ---------------------------------------------------------------
-     Testimonials carousel (scroll-snap + buttons + dots)
+     Testimonials: centered auto-sliding carousel
      --------------------------------------------------------------- */
   function renderTestimonials() {
-    var sec = $("#testimonials"), list = C.testimonials;
-    if (!isOn("testimonials") || !list || !list.length) return;
-    var r = C.rating;
-
+    var sec = $("#testimonials"), T = C.testimonials, r = C.rating;
+    if (!isOn("testimonials") || !T || !T.items.length) return;
+    var n = T.items.length;
+    var hasReviews = r.reviewsUrl && r.reviewsUrl !== "#";
     sec.innerHTML = '<div class="container">' +
-      sectionHead("המלצות", "מה מספרות המטופלות", "testimonials-title", null, true) +
-      '<div class="t-wrap reveal" role="region" aria-roledescription="קרוסלה" aria-label="המלצות מטופלות">' +
-        '<div class="t-track" id="t-track">' + list.map(function (t, i) {
-          return '<figure class="t-slide" role="group" aria-roledescription="שקופית" aria-label="' + (i + 1) + " מתוך " + list.length + '">' +
-            '<span class="t-quote-mark" aria-hidden="true">”</span>' +
+      '<div class="section-head center">' +
+        '<p class="kicker">' + esc(T.kicker) + "</p>" +
+        '<h2 class="section-title" id="testimonials-title">' + esc(T.title) + "</h2>" +
+        '<p class="section-lead"><span class="rating-badge">' + icon("star") + esc(r.value) + " בגוגל · " + esc(r.count) + " ביקורות</span></p>" +
+      "</div>" +
+      '<div class="tm" role="region" aria-roledescription="קרוסלה" aria-label="המלצות מטופלות">' +
+        '<div class="tm-viewport"><div class="tm-track" id="tm-track" aria-live="off">' + T.items.map(function (t, i) {
+          return '<div class="tm-slide" role="group" aria-roledescription="שקופית" aria-label="' + (i + 1) + " מתוך " + n + '">' +
+            '<figure class="tm-card"><span class="tm-mark" aria-hidden="true">”</span>' +
             "<blockquote><p>" + esc(t.text) + "</p></blockquote>" +
-            "<figcaption><strong>" + esc(t.name) + "</strong> · " + esc(t.treatment) + "</figcaption></figure>";
-        }).join("") + "</div>" +
-        (list.length > 1 ?
-        '<div class="t-controls">' +
-          '<button type="button" class="round-btn" data-t="prev" aria-label="ההמלצה הקודמת">' + icon("chevronRight") + "</button>" +
-          '<div class="dots">' + list.map(function (t, i) {
-            return '<button type="button" class="dot" data-t-dot="' + i + '" aria-label="המלצה ' + (i + 1) + '"' + (i === 0 ? ' aria-current="true"' : "") + "></button>";
+            "<figcaption><b>" + esc(t.name) + "</b>" + esc(t.treatment) + "</figcaption></figure></div>";
+        }).join("") + "</div></div>" +
+        (n > 1 ? '<div class="tm-controls">' +
+          '<button type="button" class="round-btn" data-tm="prev" aria-label="ההמלצה הקודמת">' + icon("chevronRight") + "</button>" +
+          '<div class="dots">' + T.items.map(function (t, i) {
+            return '<button type="button" class="dot" data-tm-dot="' + i + '" aria-label="המלצה ' + (i + 1) + '"></button>';
           }).join("") + "</div>" +
-          '<button type="button" class="round-btn" data-t="next" aria-label="ההמלצה הבאה">' + icon("chevronLeft") + "</button>" +
+          '<button type="button" class="round-btn" data-tm="next" aria-label="ההמלצה הבאה">' + icon("chevronLeft") + "</button>" +
+          '<button type="button" class="round-btn" data-tm="pause" aria-label="עצירת ההחלפה האוטומטית">' + icon("pause") + "</button>" +
         "</div>" : "") +
       "</div>" +
-      '<div class="section-cta center">' +
-        // TODO: link to the client's Google reviews (C.rating.reviewsUrl)
-        '<a class="btn btn-ghost" href="' + esc((r && r.reviewsUrl) || "#") + '"' + (r && r.reviewsUrl && r.reviewsUrl !== "#" ? ' target="_blank" rel="noopener"' : "") + ">" + icon("star") + "<span>לכל הביקורות בגוגל</span></a>" +
-        waBtn("גם את רוצה להרגיש ככה?", C.contact.defaultWhatsappMessage) +
-      "</div>" +
+      // TODO: link to the client's Google reviews (rating.reviewsUrl in config)
+      '<p class="tm-foot"><a class="text-link" href="' + esc(r.reviewsUrl || "#") + '"' + (hasReviews ? ' target="_blank" rel="noopener"' : "") + ">לכל הביקורות בגוגל " + icon("arrowLeft") + "</a></p>" +
     "</div>";
     sec.hidden = false;
-    sec.classList.add("alt-bg");
+    initTestimonials(sec, T.intervalMs || 5000);
+  }
 
-    var track = $("#t-track"), slides = $$(".t-slide", track), dots = $$(".dot", sec);
-    var active = 0;
-    function goTo(i) {
-      i = (i + slides.length) % slides.length;
-      // compute scroll target without scrollIntoView (avoids page jumps); works in RTL
-      var tr = track.getBoundingClientRect(), sr = slides[i].getBoundingClientRect();
-      track.scrollBy({ left: sr.left - tr.left, behavior: reduceMotion ? "auto" : "smooth" });
-    }
-    function setActive(i) {
-      active = i;
+  function initTestimonials(sec, interval) {
+    var viewport = $(".tm-viewport", sec), track = $("#tm-track"), slides = $$(".tm-slide", sec), dots = $$(".dot", sec);
+    var pauseBtn = $('[data-tm="pause"]', sec);
+    var i = 0, timer = null;
+    var hover = false, focus = false, visible = false, stopped = reduceMotion;
+
+    function layout() {
+      var C_ = viewport.clientWidth, w = slides[0].offsetWidth;
+      var gap = parseFloat(getComputedStyle(track).columnGap) || 24;
+      var rtl = getComputedStyle(track).direction === "rtl";
+      // RTL: slides start at the right edge, so shift right to bring slide i to the center
+      var delta = i * (w + gap) + w / 2 - C_ / 2;
+      track.style.transform = "translateX(" + (rtl ? delta : -delta) + "px)";
+      slides.forEach(function (s, j) {
+        s.classList.toggle("is-active", j === i);
+        s.setAttribute("aria-hidden", String(j !== i));
+      });
       dots.forEach(function (d, j) { if (j === i) d.setAttribute("aria-current", "true"); else d.removeAttribute("aria-current"); });
     }
-    sec.addEventListener("click", function (e) {
-      var b = e.target.closest("[data-t]"), d = e.target.closest("[data-t-dot]");
-      if (b) goTo(active + (b.getAttribute("data-t") === "next" ? 1 : -1));
-      if (d) goTo(parseInt(d.getAttribute("data-t-dot"), 10));
-    });
-    if ("IntersectionObserver" in window) {
-      var io = new IntersectionObserver(function (entries) {
-        entries.forEach(function (en) { if (en.isIntersecting) setActive(slides.indexOf(en.target)); });
-      }, { root: track, threshold: 0.6 });
-      slides.forEach(function (s) { io.observe(s); });
+    function goTo(n) { i = (n + slides.length) % slides.length; layout(); }
+    function schedule() {
+      clearInterval(timer);
+      if (!stopped && !hover && !focus && visible && !document.hidden && slides.length > 1) {
+        timer = setInterval(function () { goTo(i + 1); }, interval);
+      }
     }
+    function stopForGood() {
+      stopped = true; schedule();
+      if (pauseBtn) { pauseBtn.innerHTML = icon("play"); pauseBtn.setAttribute("aria-label", "הפעלת ההחלפה האוטומטית"); }
+    }
+
+    sec.addEventListener("click", function (e) {
+      var b = e.target.closest("[data-tm]"), d = e.target.closest("[data-tm-dot]");
+      if (d) { goTo(parseInt(d.getAttribute("data-tm-dot"), 10)); stopForGood(); }
+      if (!b) return;
+      var act = b.getAttribute("data-tm");
+      if (act === "next") { goTo(i + 1); stopForGood(); }
+      if (act === "prev") { goTo(i - 1); stopForGood(); }
+      if (act === "pause") {
+        if (stopped && !reduceMotion) {
+          stopped = false; schedule();
+          b.innerHTML = icon("pause"); b.setAttribute("aria-label", "עצירת ההחלפה האוטומטית");
+        } else stopForGood();
+      }
+    });
+
+    // swipe (touch + mouse). RTL: the next slide is on the left, so swipe right = next
+    var startX = null;
+    viewport.addEventListener("pointerdown", function (e) { startX = e.clientX; });
+    viewport.addEventListener("pointerup", function (e) {
+      if (startX === null) return;
+      var dx = e.clientX - startX; startX = null;
+      if (Math.abs(dx) < 40) return;
+      goTo(i + (dx > 0 ? 1 : -1));
+      stopForGood();
+    });
+
+    var region = $(".tm", sec);
+    region.addEventListener("mouseenter", function () { hover = true; schedule(); });
+    region.addEventListener("mouseleave", function () { hover = false; schedule(); });
+    region.addEventListener("focusin", function () { focus = true; schedule(); });
+    region.addEventListener("focusout", function () { focus = false; schedule(); });
+    region.addEventListener("touchstart", function () { stopForGood(); }, { passive: true });
+    document.addEventListener("visibilitychange", schedule);
+    if ("IntersectionObserver" in window) {
+      new IntersectionObserver(function (en) { visible = en[0].isIntersecting; schedule(); }, { threshold: 0.3 }).observe(region);
+    }
+    window.addEventListener("resize", layout);
+    layout();
   }
 
   /* ---------------------------------------------------------------
-     Brands
+     Booking (dark)
      --------------------------------------------------------------- */
-  function renderBrands() {
-    var sec = $("#brands");
-    if (!isOn("brands") || !C.brands || !C.brands.length) return;
-    sec.innerHTML = '<div class="container brands-inner reveal">' +
-      '<h2 class="brands-title" id="brands-title">עובדות עם מותגים מקצועיים</h2>' +
-      C.brands.map(function (b) {
-        return '<span class="brand-logo">' + (b.logo ? '<img src="' + esc(b.logo) + '" alt="' + esc(b.name) + '" loading="lazy">' : esc(b.name)) + "</span>";
-      }).join("") +
+  function renderBooking() {
+    var b = C.booking, c = C.contact;
+    var topics = b.chipTreatments.map(findTreatment).filter(Boolean);
+    $("#booking").innerHTML = '<div class="container booking">' +
+      head(b.kicker, b.title, "booking-title", b.text, true) +
+      '<p class="topic-label" id="topic-label">' + esc(b.chipsLabel) + "</p>" +
+      '<div class="topics" role="group" aria-labelledby="topic-label">' +
+        topics.map(function (t) { return '<button type="button" class="pill" aria-pressed="false" data-topic="' + esc(t.name) + '">' + esc(t.name) + "</button>"; }).join("") +
+        '<button type="button" class="pill" aria-pressed="false" data-topic="">' + esc(b.otherLabel) + "</button>" +
+      "</div>" +
+      '<a class="btn btn-accent btn-xl" id="booking-cta" href="' + waLink() + '" target="_blank" rel="noopener">' + icon("whatsapp") + "<span>" + esc(b.ctaText) + "</span></a>" +
+      '<p class="call-line">או התקשרי: <a href="' + telLink + '">' + esc(c.phoneDisplay) + "</a></p>" +
+      '<div class="info-row">' +
+        '<div class="reveal">' + icon("pin") + "<span>" + esc(c.street + ", " + c.city) + "</span><small>" + esc(c.addressNote) + '</small><a href="' + esc(c.wazeUrl) + '" target="_blank" rel="noopener">ניווט ב-Waze</a></div>' +
+        '<div class="reveal" style="--d:.06s">' + icon("clock") + "<span>" + esc(c.hoursShort) + "</span><small>ב׳ ושבת: סגור</small></div>" +
+        '<div class="reveal" style="--d:.12s">' + icon("mail") + '<a href="mailto:' + esc(c.email) + '">' + esc(c.email) + "</a></div>" +
+      "</div>" +
     "</div>";
-    sec.hidden = false;
-  }
 
-  /* ---------------------------------------------------------------
-     FAQ accordion
-     --------------------------------------------------------------- */
-  function renderFaq() {
-    var sec = $("#faq");
-    if (!isOn("faq") || !C.faq || !C.faq.length) return;
-    sec.innerHTML = '<div class="container">' +
-      sectionHead("שאלות נפוצות", "כל מה שרצית לשאול", "faq-title", null, true) +
-      '<div class="faq-list reveal">' + C.faq.map(function (f, i) {
-        return '<div class="faq-item"><h3>' +
-          '<button type="button" class="faq-q" id="faq-q-' + i + '" aria-expanded="false" aria-controls="faq-a-' + i + '">' +
-            "<span>" + esc(f.q) + '</span><span class="faq-icon" aria-hidden="true"></span></button></h3>' +
-          '<div class="faq-a" id="faq-a-' + i + '" role="region" aria-labelledby="faq-q-' + i + '"><div><p>' + esc(f.a) + "</p></div></div></div>";
-      }).join("") + "</div>" +
-      '<div class="section-cta center">' + waBtn("יש לך שאלה אחרת? כתבי לי", C.contact.defaultWhatsappMessage, "btn-outline") + "</div>" +
-    "</div>";
-    sec.hidden = false;
-
-    $$(".faq-q", sec).forEach(function (btn) {
-      var panel = document.getElementById(btn.getAttribute("aria-controls"));
-      panel.inert = true;
-      btn.addEventListener("click", function () {
-        var open = btn.getAttribute("aria-expanded") !== "true";
-        btn.setAttribute("aria-expanded", String(open));
-        panel.classList.toggle("is-open", open);
-        panel.inert = !open;
+    var cta = $("#booking-cta"), pills = $$("#booking .pill");
+    pills.forEach(function (p) {
+      p.addEventListener("click", function () {
+        var active = p.getAttribute("aria-pressed") === "true";
+        pills.forEach(function (x) { x.setAttribute("aria-pressed", "false"); });
+        var topic = active ? "" : p.getAttribute("data-topic");
+        if (!active) p.setAttribute("aria-pressed", "true");
+        cta.href = waLink(topic ? b.messageTemplate.replace("{treatment}", topic) : null);
       });
     });
   }
 
   /* ---------------------------------------------------------------
-     Contact: hours (today highlighted, open-now by Israel time), map
+     FAQ: two columns, one answer open at a time
      --------------------------------------------------------------- */
-  function renderContact() {
-    var c = C.contact;
-    var sorted = C.hours.slice().sort(function (a, b) { return a.day - b.day; });
-    $("#contact").innerHTML = '<div class="container">' +
-      sectionHead("צור קשר", "בואי נכיר", "contact-title", "הדרך הכי מהירה לקבוע תור היא וואטסאפ. אפשר גם להתקשר, או פשוט לקפוץ לקליניקה.") +
-      '<div class="contact-grid">' +
-        '<div class="reveal">' +
-          '<div class="contact-block"><h3>כתובת</h3><p class="address">' + esc(c.street + ", " + c.city) + "<small>" + esc(c.addressNote) + "</small></p></div>" +
-          '<div class="contact-block"><h3>שעות פתיחה</h3>' +
-            '<p class="open-status" id="open-status" aria-live="polite"></p>' +
-            '<table class="hours-table"><caption class="visually-hidden">שעות פתיחה</caption><tbody>' + sorted.map(function (h) {
-              return '<tr data-day="' + h.day + '"><th scope="row">' + esc(h.label) + "</th><td>" + (h.closed ? "סגור" : esc(h.open + "–" + h.close)) + "</td></tr>";
-            }).join("") + "</tbody></table></div>" +
-          '<div class="contact-actions">' +
-            waBtn("וואטסאפ", c.defaultWhatsappMessage) +
-            '<a class="btn btn-ghost" href="' + telLink + '">' + icon("phone") + "<span>חיוג</span></a>" +
-            '<a class="btn btn-ghost" href="' + esc(c.wazeUrl) + '" target="_blank" rel="noopener">' + icon("nav") + "<span>ניווט ב-Waze</span></a>" +
-            '<a class="btn btn-ghost" href="mailto:' + esc(c.email) + '">' + icon("mail") + "<span>אימייל</span></a>" +
-          "</div>" +
-        "</div>" +
-        '<div class="map reveal" style="--d:.1s"><iframe src="' + esc(c.mapEmbedUrl) + '" title="' + esc("מפה: " + C.business.name + ", " + c.street + " " + c.city) + '" loading="lazy" referrerpolicy="no-referrer-when-downgrade" allowfullscreen></iframe></div>' +
-      "</div>" +
-    "</div>";
-
-    updateOpenStatus();
-    setInterval(updateOpenStatus, 60000);
-  }
-
-  function updateOpenStatus() {
-    var now = israelNow();
-    var byDay = {};
-    C.hours.forEach(function (h) { byDay[h.day] = h; });
-    var today = byDay[now.day];
-
-    $$(".hours-table tr").forEach(function (tr) {
-      var isToday = parseInt(tr.getAttribute("data-day"), 10) === now.day;
-      tr.classList.toggle("is-today", isToday);
-      var th = tr.querySelector("th"), tag = th.querySelector(".today-tag");
-      if (isToday && !tag) th.insertAdjacentHTML("beforeend", '<span class="today-tag">היום</span>');
-      if (!isToday && tag) tag.parentNode.removeChild(tag);
-    });
-
-    var el = $("#open-status");
-    if (!el) return;
-    var open = today && !today.closed && now.minutes >= toMinutes(today.open) && now.minutes < toMinutes(today.close);
-    el.classList.toggle("is-open", !!open);
-    if (open) { el.textContent = "פתוח עכשיו · עד " + today.close; return; }
-
-    // find next opening
-    var text = "סגור עכשיו";
-    if (today && !today.closed && now.minutes < toMinutes(today.open)) {
-      text += " · נפתח היום ב-" + today.open;
-    } else {
-      for (var i = 1; i <= 7; i++) {
-        var h = byDay[(now.day + i) % 7];
-        if (h && !h.closed) { text += " · נפתח " + (i === 1 ? "מחר" : "ביום " + h.label) + " ב-" + h.open; break; }
-      }
+  function renderFaq() {
+    var sec = $("#faq"), list = C.faq;
+    if (!isOn("faq") || !list || !list.length) return;
+    var half = Math.ceil(list.length / 2);
+    function item(f, i) {
+      return '<div class="faq-item"><h3><button type="button" class="faq-q" id="faq-q-' + i + '" aria-expanded="false" aria-controls="faq-a-' + i + '">' +
+        "<span>" + esc(f.q) + '</span><span class="faq-icon" aria-hidden="true"></span></button></h3>' +
+        '<div class="faq-a" id="faq-a-' + i + '" role="region" aria-labelledby="faq-q-' + i + '"><div><p>' + esc(f.a) + "</p></div></div></div>";
     }
-    el.textContent = text;
+    sec.innerHTML = '<div class="container">' +
+      head("שאלות", "שאלות נפוצות", "faq-title", null, true) +
+      '<div class="faq-cols">' +
+        '<div class="faq-col">' + list.slice(0, half).map(function (f, i) { return item(f, i); }).join("") + "</div>" +
+        '<div class="faq-col">' + list.slice(half).map(function (f, i) { return item(f, i + half); }).join("") + "</div>" +
+      "</div>" +
+      '<div class="faq-cta">' + waBtn("יש לך שאלה אחרת? כתבי לי", null, "btn-outline") + "</div>" +
+    "</div>";
+    sec.hidden = false;
+
+    var buttons = $$(".faq-q", sec);
+    function setOpen(btn, open) {
+      var panel = document.getElementById(btn.getAttribute("aria-controls"));
+      btn.setAttribute("aria-expanded", String(open));
+      panel.classList.toggle("is-open", open);
+      panel.inert = !open;
+    }
+    buttons.forEach(function (btn) {
+      setOpen(btn, false);
+      btn.addEventListener("click", function () {
+        var open = btn.getAttribute("aria-expanded") !== "true";
+        buttons.forEach(function (b) { if (b !== btn) setOpen(b, false); });
+        setOpen(btn, open);
+      });
+    });
   }
 
   /* ---------------------------------------------------------------
-     Footer, mobile bar
+     Footer, mobile bar, floating WhatsApp
      --------------------------------------------------------------- */
   function renderFooter() {
     var c = C.contact;
     $("#site-footer").innerHTML = '<div class="container">' +
       '<div class="footer-grid">' +
-        '<div><a class="wordmark" href="#top">' + esc(C.business.name) + "<small>" + esc(C.business.nameEn) + "</small></a>" +
-          "<p>" + esc(C.business.tagline) + "</p></div>" +
-        '<nav aria-label="קישורים מהירים"><h3>קישורים</h3><ul class="footer-links">' +
+        '<div><a class="wordmark" href="#top">' + wordmark() + "</a><p>" + esc(C.business.tagline) + "</p></div>" +
+        '<nav aria-labelledby="f-links"><h2 id="f-links">קישורים</h2><ul class="footer-links">' +
           navItems().map(function (n) { return '<li><a href="#' + esc(n.target) + '">' + esc(n.label) + "</a></li>"; }).join("") +
         "</ul></nav>" +
-        "<div><h3>פרטי קשר</h3><ul class=\"footer-links\">" +
-          "<li>" + esc(c.street + ", " + c.city) + "</li>" +
+        '<div><h2>יצירת קשר</h2><ul class="footer-links">' +
+          '<li><a href="' + waLink() + '" target="_blank" rel="noopener">וואטסאפ</a></li>' +
           '<li><a href="' + telLink + '">' + esc(c.phoneDisplay) + "</a></li>" +
           '<li><a href="mailto:' + esc(c.email) + '">' + esc(c.email) + "</a></li>" +
           '<li><a href="accessibility.html">הצהרת נגישות</a></li>' +
         "</ul></div>" +
       "</div>" +
-      '<div class="footer-bottom"><span>© ' + new Date().getFullYear() + " " + esc(C.business.name) + ". כל הזכויות שמורות.</span>" +
-        (C.credit ? "<span>" + esc(C.credit) + "</span>" : "") + "</div>" +
+      '<div class="footer-bottom"><span>© ' + new Date().getFullYear() + " " + esc(C.business.name) + "</span>" +
+        "<span>" + (C.demoMode ? "גרסת הדגמה · " : "") + esc(C.credit || "") + "</span></div>" +
     "</div>";
   }
 
   function renderMobileBar() {
-    $("#mobile-bar").innerHTML =
+    var bar = $("#mobile-bar");
+    bar.innerHTML =
       '<a class="is-primary" href="' + waLink() + '" target="_blank" rel="noopener">' + icon("whatsapp") + "<span>וואטסאפ</span></a>" +
       '<a href="' + telLink + '">' + icon("phone") + "<span>חיוג</span></a>" +
-      '<a href="' + esc(C.contact.wazeUrl) + '" target="_blank" rel="noopener">' + icon("nav") + "<span>ניווט</span></a>";
+      '<a href="' + esc(C.contact.wazeUrl) + '" target="_blank" rel="noopener">' + icon("nav") + "<span>Waze</span></a>";
+    $("#wa-float").href = waLink();
+
+    // hide the bar while the big booking CTA is on screen
+    if ("IntersectionObserver" in window) {
+      new IntersectionObserver(function (en) {
+        bar.classList.toggle("is-hidden", en[0].isIntersecting);
+      }, { threshold: 0.2 }).observe($("#booking"));
+    }
   }
 
   /* ---------------------------------------------------------------
      Accessibility toolbar (saved in localStorage)
      --------------------------------------------------------------- */
   function initA11y() {
-    var root = document.documentElement;
-    var toggle = $("#a11y-toggle"), panel = $("#a11y-panel");
+    var root = document.documentElement, toggle = $("#a11y-toggle"), panel = $("#a11y-panel");
     var prefs = {};
     try { prefs = JSON.parse(localStorage.getItem("a11yPrefs") || "{}"); } catch (e) {}
     var sizes = [0.9, 1, 1.12, 1.25, 1.4];
-
-    function save() { try { localStorage.setItem("a11yPrefs", JSON.stringify(prefs)); } catch (e) {} }
     function apply() {
       root.style.setProperty("--font-scale", prefs.size || 1);
       root.classList.toggle("a11y-contrast", !!prefs.contrast);
       root.classList.toggle("a11y-links", !!prefs.links);
       $('[data-a11y="contrast"]').setAttribute("aria-pressed", String(!!prefs.contrast));
       $('[data-a11y="links"]').setAttribute("aria-pressed", String(!!prefs.links));
-      save();
+      try { localStorage.setItem("a11yPrefs", JSON.stringify(prefs)); } catch (e) {}
     }
-    function setOpen(open) {
-      panel.hidden = !open;
-      toggle.setAttribute("aria-expanded", String(open));
-    }
+    function setOpen(open) { panel.hidden = !open; toggle.setAttribute("aria-expanded", String(open)); }
     toggle.addEventListener("click", function () { setOpen(panel.hidden); });
     panel.addEventListener("click", function (e) {
       var b = e.target.closest("[data-a11y]");
       if (!b) return;
-      var a = b.getAttribute("data-a11y");
-      var idx = sizes.indexOf(prefs.size || 1); if (idx < 0) idx = 1;
+      var a = b.getAttribute("data-a11y"), idx = sizes.indexOf(prefs.size || 1);
+      if (idx < 0) idx = 1;
       if (a === "bigger") prefs.size = sizes[Math.min(idx + 1, sizes.length - 1)];
       if (a === "smaller") prefs.size = sizes[Math.max(idx - 1, 0)];
       if (a === "contrast") prefs.contrast = !prefs.contrast;
@@ -941,45 +921,46 @@
   }
 
   /* ---------------------------------------------------------------
-     Demo theme switcher (?themes=1) — for sales calls
+     Demo palette switcher (?themes=1) — for sales calls
+     onAccent: plum text on bright accents keeps AA contrast
      --------------------------------------------------------------- */
-  function initThemeSwitcher() {
+  var PALETTES = [
+    { name: "Blush & Berry",       bg: "#FBF1EF", rose: "#EFC9C3", accent: "#D6336C", onAccent: "#FFFFFF" },
+    { name: "Nude & Coral",        bg: "#F8EFE9", rose: "#E8CBBB", accent: "#F0624D", onAccent: "#2B1820" },
+    { name: "Powder & Hot pink",   bg: "#FCF0F2", rose: "#E9C7CF", accent: "#FF4F7B", onAccent: "#2B1820" }
+  ];
+  function initPaletteSwitcher() {
     var q;
     try { q = new URLSearchParams(location.search); } catch (e) { return; }
     if (q.get("themes") !== "1") return;
-    var themes = [
-      { id: "editorial", label: "Editorial", color: "#4A1426" },
-      { id: "noir",      label: "Noir",      color: "#C9957B" },
-      { id: "clinic",    label: "Clinic",    color: "#7C9A86" },
-      { id: "warm",      label: "Warm",      color: "#B86B4B" }
-    ];
     var root = document.documentElement;
+    var current = getComputedStyle(root).getPropertyValue("--accent").trim().toUpperCase();
     var box = document.createElement("div");
-    box.className = "theme-switcher";
+    box.className = "palette-switcher";
     box.setAttribute("role", "group");
-    box.setAttribute("aria-label", "תצוגת ערכות צבע (דמו)");
-    box.innerHTML = "<p>ערכות צבע</p>" + themes.map(function (t) {
-      return '<button type="button" data-theme-id="' + t.id + '" aria-pressed="' + (root.getAttribute("data-theme") === t.id) + '" aria-label="' + t.label + '">' +
-        '<span class="swatch" style="background:' + t.color + '"></span><span>' + t.label + "</span></button>";
+    box.setAttribute("aria-label", "תצוגת פלטות צבע (דמו)");
+    box.innerHTML = "<p>פלטות צבע</p>" + PALETTES.map(function (p, i) {
+      return '<button type="button" data-palette="' + i + '" aria-pressed="' + (p.accent.toUpperCase() === current) + '" aria-label="' + esc(p.name) + '">' +
+        '<span class="swatches"><i style="background:' + p.bg + '"></i><i style="background:' + p.rose + '"></i><i style="background:' + p.accent + '"></i></span>' +
+        "<span>" + esc(p.name) + "</span></button>";
     }).join("");
     document.body.appendChild(box);
     box.addEventListener("click", function (e) {
-      var b = e.target.closest("[data-theme-id]");
+      var b = e.target.closest("[data-palette]");
       if (!b) return;
-      var id = b.getAttribute("data-theme-id");
-      root.setAttribute("data-theme", id);
-      try { sessionStorage.setItem("demoTheme", id); } catch (err) {}
-      $$("[data-theme-id]", box).forEach(function (x) { x.setAttribute("aria-pressed", String(x === b)); });
-      updateThemeColor();
+      var p = PALETTES[+b.getAttribute("data-palette")];
+      root.style.setProperty("--bg", p.bg);
+      root.style.setProperty("--rose", p.rose);
+      root.style.setProperty("--accent", p.accent);
+      root.style.setProperty("--on-accent", p.onAccent);
+      setMeta("name", "theme-color", p.bg);
+      try { sessionStorage.setItem("demoPalette", JSON.stringify({ bg: p.bg, rose: p.rose, accent: p.accent, onAccent: p.onAccent })); } catch (err) {}
+      $$("[data-palette]", box).forEach(function (x) { x.setAttribute("aria-pressed", String(x === b)); });
     });
-  }
-  function updateThemeColor() {
-    var bg = getComputedStyle(document.documentElement).getPropertyValue("--bg").trim();
-    if (bg) setMeta("name", "theme-color", bg);
   }
 
   /* ---------------------------------------------------------------
-     Reveal on scroll (content is never hidden if JS/IO is missing)
+     Reveal on scroll (items only; content is fully visible without JS)
      --------------------------------------------------------------- */
   function initReveal() {
     if (reduceMotion || !("IntersectionObserver" in window)) return;
@@ -988,33 +969,23 @@
       entries.forEach(function (en) {
         if (en.isIntersecting) { en.target.classList.add("is-visible"); io.unobserve(en.target); }
       });
-    }, { rootMargin: "0px 0px -8% 0px", threshold: 0.08 });
+    }, { rootMargin: "0px 0px -10% 0px" });
     $$(".reveal").forEach(function (el) { io.observe(el); });
   }
 
-  /* ---------------------------------------------------------------
-     Static icons in index.html ([data-icon])
-     --------------------------------------------------------------- */
   function fillStaticIcons() {
-    $$("[data-icon]").forEach(function (el) {
-      var tmp = document.createElement("div");
-      tmp.innerHTML = icon(el.getAttribute("data-icon"));
-      el.innerHTML = tmp.firstChild.innerHTML;
-    });
+    $$("[data-icon]").forEach(function (el) { el.outerHTML = svg(el.getAttribute("data-icon")); });
   }
 
   /* ---------------------------------------------------------------
      Boot — each block is isolated so one error can't blank the page
      --------------------------------------------------------------- */
   [
-    renderSeo, renderHeader, initMobileMenu, renderHero, renderStats, renderConcerns, initSheet,
-    renderTreatments, renderPromo, renderBeforeAfter, renderQuiz, renderAbout, renderTestimonials,
-    renderBrands, renderFaq, renderContact, renderFooter, renderMobileBar, fillStaticIcons,
-    initA11y, initThemeSwitcher, updateThemeColor, initReveal
+    renderSeo, renderHeader, initSmartHeader, initMobileMenu, renderHero, renderMarquee,
+    renderFinder, initQuizModal, renderBeforeAfter, renderAbout, renderTestimonials,
+    renderBooking, renderFaq, renderFooter, renderMobileBar, fillStaticIcons,
+    initA11y, initPaletteSwitcher, initReveal
   ].forEach(function (fn) {
     try { fn(); } catch (e) { console.error("[site] " + fn.name + " failed:", e); }
   });
-
-  // close the concern sheet if the screen grows to desktop
-  mobileQuery.addEventListener("change", function (m) { if (!m.matches) closeSheet(); });
 })();

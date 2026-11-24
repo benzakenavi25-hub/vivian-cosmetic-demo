@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="he" dir="rtl" data-theme="editorial">
+<html lang="he" dir="rtl">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -7,13 +7,14 @@
   <meta name="robots" content="noindex, nofollow">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Assistant:wght@400;600;700&family=Frank+Ruhl+Libre:wght@500&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Bellefair&family=Heebo:wght@300;400;500&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/styles.css">
   <script src="js/config.js"></script>
   <script>
     (function () {
-      var c = window.SITE_CONFIG || {}, root = document.documentElement;
-      root.setAttribute("data-theme", ["editorial", "noir", "clinic", "warm"].indexOf(c.theme) > -1 ? c.theme : "editorial");
+      var c = window.SITE_CONFIG || {}, root = document.documentElement, p = c.palette || {};
+      var map = { bg: "--bg", rose: "--rose", accent: "--accent", onAccent: "--on-accent", ink: "--ink", inkSoft: "--ink-soft", plum: "--plum" };
+      for (var k in map) if (p[k]) root.style.setProperty(map[k], p[k]);
       try {
         var a = JSON.parse(localStorage.getItem("a11yPrefs") || "{}");
         if (a.size) root.style.setProperty("--font-scale", a.size);
@@ -25,12 +26,12 @@
   <style>
     body { padding-bottom: 0; }
     .statement { max-width: 820px; padding-block: 48px 80px; }
-    .statement h1 { font-size: clamp(2.2rem, 6vw, 3.4rem); color: var(--primary); margin: 12px 0 24px; }
+    .statement h1 { font-size: clamp(2.2rem, 6vw, 3.4rem); color: var(--ink); margin: 12px 0 24px; }
     .statement h2 { font-size: 1.6rem; margin: 36px 0 12px; }
     .statement ul { list-style: disc; padding-inline-start: 1.4em; }
     .statement li { margin-bottom: 6px; }
-    .back { display: inline-flex; gap: 6px; text-decoration: none; font-weight: 600; color: var(--primary); }
-    .todo { background: var(--soft); padding: 0 4px; border-radius: 4px; }
+    .back { display: inline-flex; gap: 6px; text-decoration: none; font-weight: 600; color: var(--ink); }
+    .todo { background: var(--rose); padding: 0 4px; border-radius: 4px; }
   </style>
 </head>
 <body>
