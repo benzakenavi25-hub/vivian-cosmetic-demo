@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="he" dir="rtl" data-theme="editorial">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>הצהרת נגישות</title>
+  <meta name="robots" content="noindex, nofollow">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Assistant:wght@400;600;700&family=Frank+Ruhl+Libre:wght@500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/styles.css">
+  <script src="js/config.js"></script>
+  <script>
+    (function () {
+      var c = window.SITE_CONFIG || {}, root = document.documentElement;
+      root.setAttribute("data-theme", ["editorial", "noir", "clinic", "warm"].indexOf(c.theme) > -1 ? c.theme : "editorial");
+      try {
+        var a = JSON.parse(localStorage.getItem("a11yPrefs") || "{}");
+        if (a.size) root.style.setProperty("--font-scale", a.size);
+        if (a.contrast) root.classList.add("a11y-contrast");
+        if (a.links) root.classList.add("a11y-links");
+      } catch (e) {}
+    })();
+  </script>
+  <style>
+    body { padding-bottom: 0; }
+    .statement { max-width: 820px; padding-block: 48px 80px; }
+    .statement h1 { font-size: clamp(2.2rem, 6vw, 3.4rem); color: var(--primary); margin: 12px 0 24px; }
+    .statement h2 { font-size: 1.6rem; margin: 36px 0 12px; }
+    .statement ul { list-style: disc; padding-inline-start: 1.4em; }
+    .statement li { margin-bottom: 6px; }
+    .back { display: inline-flex; gap: 6px; text-decoration: none; font-weight: 600; color: var(--primary); }
+    .todo { background: var(--soft); padding: 0 4px; border-radius: 4px; }
+  </style>
+</head>
+<body>
+  <a class="skip-link" href="#main">דלג לתוכן הראשי</a>
+  <main id="main" class="container statement" tabindex="-1">
+    <a class="back" href="index.html">→ חזרה לאתר</a>
+    <h1>הצהרת נגישות</h1>
+
+    <p>ב<span data-cfg="name">[שם העסק]</span> אנו רואים חשיבות רבה במתן שירות שוויוני לכלל הלקוחות, ופועלים כדי שהאתר יהיה נגיש ונוח לשימוש גם לאנשים עם מוגבלות.</p>
+
+    <h2>רמת הנגישות באתר</h2>
+    <p>האתר הונגש בהתאם להוראות תקנות שוויון זכויות לאנשים עם מוגבלות (התאמות נגישות לשירות), התשע"ג-2013, ולתקן הישראלי ת"י 5568, המבוסס על הנחיות WCAG 2.1 ברמה AA, במידת האפשר.</p>
+
+    <h2>התאמות שבוצעו באתר</h2>
+    <ul>
+      <li>מבנה סמנטי של כותרות ואזורים, וקישור "דלג לתוכן הראשי".</li>
+      <li>תמיכה מלאה בניווט באמצעות מקלדת, כולל אקורדיון, שאלון וסליידר, עם סימון פוקוס ברור.</li>
+      <li>תיאורי טקסט חלופיים (alt) לתמונות ותוויות לכפתורים.</li>
+      <li>תפריט נגישות: הגדלה והקטנה של טקסט, מצב ניגודיות גבוהה והדגשת קישורים.</li>
+      <li>ניגודיות צבעים בהתאם להנחיות, ותמיכה בהגדרת "הפחתת תנועה" של מערכת ההפעלה.</li>
+      <li>התאמה לתצוגה במובייל, טאבלט ומחשב.</li>
+    </ul>
+
+    <h2>הסדרי נגישות בבית העסק</h2>
+    <p class="todo">[TODO: לתאר את הסדרי הנגישות הפיזיים בקליניקה, למשל: גישה לנכים, מדרגות, חניה נגישה. אם אין, לציין זאת.]</p>
+
+    <h2>נתקלת בבעיה?</h2>
+    <p>אם נתקלת בקושי בגלישה באתר או שיש לך הצעה לשיפור, נשמח לשמוע. ניתן לפנות אלינו:</p>
+    <ul>
+      <li>רכז/ת נגישות: <span class="todo">[TODO: שם]</span></li>
+      <li>טלפון: <a data-cfg="phone" href="#">[טלפון]</a></li>
+      <li>דוא"ל: <a data-cfg="email" href="#">[אימייל]</a></li>
+      <li>כתובת: <span data-cfg="address">[כתובת]</span></li>
+    </ul>
+
+    <p>תאריך עדכון ההצהרה: <span class="todo">[TODO: תאריך]</span></p>
+  </main>
+
+  <script>
+    (function () {
+      var c = window.SITE_CONFIG;
+      if (!c) return;
+      var set = function (key, text, href) {
+        document.querySelectorAll('[data-cfg="' + key + '"]').forEach(function (el) {
+          el.textContent = text;
+          if (href) el.setAttribute("href", href);
+        });
+      };
+      document.title = "הצהרת נגישות | " + c.business.name;
+      set("name", c.business.name);
+      set("phone", c.contact.phoneDisplay, "tel:+" + c.contact.phoneIntl);
+      set("email", c.contact.email, "mailto:" + c.contact.email);
+      set("address", c.contact.street + ", " + c.contact.city);
+    })();
+  </script>
+</body>
+</html>

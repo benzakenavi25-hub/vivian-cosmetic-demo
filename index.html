@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="he" dir="rtl" data-theme="editorial">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <!-- Title, description, Open Graph, robots and JSON-LD are generated from js/config.js.
+       The static values below are only a fallback for link previews (WhatsApp/Facebook don't run JS):
+       update them too when you create a site for a new client. -->
+  <title>ויויאן קוסמטיק | קוסמטיקה פרא-רפואית בהרצליה</title>
+  <meta name="description" content="בוטיק לקוסמטיקה פרא-רפואית בהרצליה עם מעל 35 שנות ניסיון: אקנה, כתמים, אנטי-אייג'ינג. קביעת תור בוואטסאפ.">
+  <meta name="robots" content="noindex, nofollow">
+  <meta property="og:type" content="website">
+  <meta property="og:locale" content="he_IL">
+  <meta property="og:title" content="ויויאן קוסמטיק | קוסמטיקה פרא-רפואית בהרצליה">
+  <meta property="og:description" content="מעל 35 שנה של עור בריא. בהרצליה.">
+  <meta name="theme-color" content="#F7F1EA">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 64 64%27%3E%3Crect width=%2764%27 height=%2764%27 rx=%2714%27 fill=%27%234A1426%27/%3E%3Ctext x=%2732%27 y=%2745%27 font-family=%27Georgia,serif%27 font-size=%2738%27 text-anchor=%27middle%27 fill=%27%23F7F1EA%27%3EV%3C/text%3E%3C/svg%3E">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Assistant:wght@300;400;500;600;700&family=Frank+Ruhl+Libre:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/styles.css">
+
+  <!-- Apply theme + saved accessibility prefs before first paint (avoids a flash) -->
+  <script src="js/config.js"></script>
+  <script>
+    (function () {
+      var c = window.SITE_CONFIG || {};
+      var root = document.documentElement;
+      var themes = ["editorial", "noir", "clinic", "warm"];
+      var t = c.theme;
+      try {
+        var q = new URLSearchParams(location.search);
+        if (q.get("themes") === "1" && themes.indexOf(sessionStorage.getItem("demoTheme")) > -1) t = sessionStorage.getItem("demoTheme");
+        var a = JSON.parse(localStorage.getItem("a11yPrefs") || "{}");
+        if (a.size) root.style.setProperty("--font-scale", a.size);
+        if (a.contrast) root.classList.add("a11y-contrast");
+        if (a.links) root.classList.add("a11y-links");
+      } catch (e) {}
+      root.setAttribute("data-theme", themes.indexOf(t) > -1 ? t : "editorial");
+      root.classList.add("js");
+    })();
+  </script>
+</head>
+<body>
+  <a class="skip-link" href="#main">דלג לתוכן הראשי</a>
+
+  <!-- 1. Demo ribbon -->
+  <div class="demo-ribbon" id="demo-ribbon" hidden></div>
+
+  <!-- 2. Header -->
+  <header class="site-header" id="site-header">
+    <div class="container header-inner">
+      <a class="wordmark" href="#top" id="header-logo" aria-label="לראש העמוד"></a>
+      <nav class="main-nav" aria-label="ניווט ראשי">
+        <ul id="nav-list"></ul>
+      </nav>
+      <a class="btn btn-primary btn-sm header-wa" id="header-wa" target="_blank" rel="noopener">
+        <span class="icon" data-icon="whatsapp" aria-hidden="true"></span>
+        <span>קביעת תור</span>
+      </a>
+      <button class="menu-toggle" id="menu-toggle" type="button" aria-expanded="false" aria-controls="mobile-menu" aria-label="פתיחת תפריט">
+        <span></span><span></span>
+      </button>
+    </div>
+  </header>
+
+  <!-- Mobile full-screen menu -->
+  <div class="mobile-menu" id="mobile-menu" role="dialog" aria-modal="true" aria-label="תפריט" hidden>
+    <nav aria-label="ניווט במובייל">
+      <ul id="mobile-nav-list"></ul>
+    </nav>
+    <div class="mobile-menu-foot" id="mobile-menu-foot"></div>
+  </div>
+
+  <main id="main" tabindex="-1">
+    <span id="top"></span>
+
+    <!-- 3. Hero -->
+    <section class="hero" id="hero" aria-labelledby="hero-title"></section>
+
+    <!-- 4. Stats -->
+    <section class="stats" id="stats" aria-label="במספרים"></section>
+
+    <!-- 5. Concerns -->
+    <section class="section concerns" id="concerns" aria-labelledby="concerns-title"></section>
+
+    <!-- 6. Treatments + prices -->
+    <section class="section treatments" id="treatments" aria-labelledby="treatments-title"></section>
+
+    <!-- 7. Promo (optional) -->
+    <section class="promo" id="promo" aria-labelledby="promo-title" hidden></section>
+
+    <!-- 8. Before / After (optional) -->
+    <section class="section before-after" id="before-after" aria-labelledby="ba-title" hidden></section>
+
+    <!-- 9. Skin quiz (optional) -->
+    <section class="section quiz" id="quiz" aria-labelledby="quiz-title" hidden></section>
+
+    <!-- 10. About -->
+    <section class="section about" id="about" aria-labelledby="about-title"></section>
+
+    <!-- 11. Testimonials (optional) -->
+    <section class="section testimonials" id="testimonials" aria-labelledby="testimonials-title" hidden></section>
+
+    <!-- 12. Brands (optional) -->
+    <section class="brands" id="brands" aria-labelledby="brands-title" hidden></section>
+
+    <!-- 13. FAQ (optional) -->
+    <section class="section faq" id="faq" aria-labelledby="faq-title" hidden></section>
+
+    <!-- 14. Contact -->
+    <section class="section contact" id="contact" aria-labelledby="contact-title"></section>
+  </main>
+
+  <!-- 15. Footer -->
+  <footer class="site-footer" id="site-footer"></footer>
+
+  <!-- 16. Mobile sticky bottom bar -->
+  <nav class="mobile-bar" id="mobile-bar" aria-label="פעולות מהירות"></nav>
+
+  <!-- 17. Floating WhatsApp (desktop) -->
+  <a class="wa-float" id="wa-float" target="_blank" rel="noopener" aria-label="שליחת הודעה בוואטסאפ">
+    <span class="icon" data-icon="whatsapp" aria-hidden="true"></span>
+  </a>
+
+  <!-- Accessibility toolbar -->
+  <div class="a11y" id="a11y">
+    <button class="a11y-toggle" id="a11y-toggle" type="button" aria-expanded="false" aria-controls="a11y-panel" aria-label="תפריט נגישות">
+      <span class="icon" data-icon="a11y" aria-hidden="true"></span>
+    </button>
+    <div class="a11y-panel" id="a11y-panel" role="group" aria-label="הגדרות נגישות" hidden>
+      <p class="a11y-title">נגישות</p>
+      <div class="a11y-row">
+        <button type="button" data-a11y="smaller" aria-label="הקטנת טקסט">א-</button>
+        <button type="button" data-a11y="bigger" aria-label="הגדלת טקסט">א+</button>
+      </div>
+      <button type="button" data-a11y="contrast" aria-pressed="false">ניגודיות גבוהה</button>
+      <button type="button" data-a11y="links" aria-pressed="false">הדגשת קישורים</button>
+      <button type="button" data-a11y="reset">איפוס</button>
+      <a href="accessibility.html">הצהרת נגישות</a>
+    </div>
+  </div>
+
+  <!-- Bottom sheet (mobile concern details) -->
+  <div class="sheet" id="sheet" hidden>
+    <div class="sheet-backdrop" data-close-sheet></div>
+    <div class="sheet-panel" role="dialog" aria-modal="true" aria-labelledby="sheet-title" tabindex="-1">
+      <button class="sheet-close" type="button" data-close-sheet aria-label="סגירה">
+        <span class="icon" data-icon="close" aria-hidden="true"></span>
+      </button>
+      <div class="sheet-body" id="sheet-body"></div>
+    </div>
+  </div>
+
+  <noscript>
+    <div class="noscript">
+      <p>ויויאן קוסמטיק · סוקולוב 13, הרצליה · <a href="tel:+972522892431">052-2892431</a></p>
+    </div>
+  </noscript>
+
+  <script src="js/main.js" defer></script>
+</body>
+</html>
